@@ -177,4 +177,5 @@ export declare class SalesService {
         total: number;
         changeGiven: number;
     }>;
+    deleteAll(): Promise<void>;
 }

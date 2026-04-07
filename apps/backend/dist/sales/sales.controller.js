@@ -18,6 +18,9 @@ const swagger_1 = require("@nestjs/swagger");
 const sales_service_1 = require("./sales.service");
 const sale_dto_1 = require("./dto/sale.dto");
 const jwt_auth_guard_1 = require("../common/guards/jwt-auth.guard");
+const roles_guard_1 = require("../common/guards/roles.guard");
+const roles_decorator_1 = require("../common/decorators/roles.decorator");
+const enums_1 = require("../common/enums");
 let SalesController = class SalesController {
     constructor(service) {
         this.service = service;
@@ -29,6 +32,7 @@ let SalesController = class SalesController {
     create(dto, req) {
         return this.service.create(dto, req.user.id);
     }
+    deleteAll() { return this.service.deleteAll(); }
 };
 exports.SalesController = SalesController;
 __decorate([
@@ -54,6 +58,14 @@ __decorate([
     __metadata("design:paramtypes", [sale_dto_1.CreateSaleDto, Object]),
     __metadata("design:returntype", void 0)
 ], SalesController.prototype, "create", null);
+__decorate([
+    (0, common_1.Delete)(),
+    (0, common_1.UseGuards)(roles_guard_1.RolesGuard),
+    (0, roles_decorator_1.Roles)(enums_1.Role.ADMIN),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], SalesController.prototype, "deleteAll", null);
 exports.SalesController = SalesController = __decorate([
     (0, swagger_1.ApiTags)('Sales'),
     (0, swagger_1.ApiBearerAuth)(),

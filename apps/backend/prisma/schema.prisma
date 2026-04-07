@@ -123,9 +123,10 @@ model Sale {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
-  cashier  User      @relation(fields: [cashierId], references: [id])
-  customer Customer? @relation(fields: [customerId], references: [id])
-  items    SaleItem[]
+  cashier         User              @relation(fields: [cashierId], references: [id])
+  customer        Customer?         @relation(fields: [customerId], references: [id])
+  items           SaleItem[]
+  installmentPlan InstallmentPlan?
 
   @@map("sales")
 }
@@ -162,6 +163,173 @@ model InventoryLog {
   performedBy User    @relation(fields: [performedById], references: [id])
 
   @@map("inventory_logs")
+}
+
+// ── Installment Plans ────────────────────────────────────────────────────────
+
+model InstallmentPlan {
+  id            String   @id @default(cuid())
+  saleId        String   @unique
+  totalAmount   Float
+  downPayment   Float
+  monthlyAmount Float
+  installments  Int
+  startDate     DateTime
+  endDate       DateTime
+  status        String   @default("ACTIVE") // ACTIVE, COMPLETED, DEFAULTED, CANCELLED
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  sale     Sale                  @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  payments InstallmentPayment[]
+
+  @@map("installment_plans")
+}
+
+model InstallmentPayment {
+  id            String    @id @default(cuid())
+  planId        String
+  installmentNo Int
+  amount        Float
+  dueDate       DateTime
+  paidDate      DateTime?
+  paidAmount    Float?
+  status        String    @default("PENDING") // PENDING, PAID, PARTIAL, OVERDUE
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  plan InstallmentPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@map("installment_payments")
+}
+
+// ── Returns & Exchanges ──────────────────────────────────────────────────────
+
+model Return {
+  id              String   @id @default(cuid())
+  returnNumber    String   @unique
+  originalSaleId  String
+  type            String   // RETURN, EXCHANGE
+  reason          String
+  refundAmount    Float    @default(0)
+  restockingFee   Float    @default(0)
+  processedBy     String
+  approvedBy      String?
+  customerId      String?
+  status          String   @default("PENDING") // PENDING, APPROVED, REJECTED, COMPLETED
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  returnItems ReturnItem[]
+
+  @@map("returns")
+}
+
+model ReturnItem {
+  id           String  @id @default(cuid())
+  returnId     String
+  productId    String
+  quantity     Int
+  serialNumber String?
+  reason       String
+  condition    String  // DEFECTIVE, UNOPENED, OPENED, DAMAGED
+  refundAmount Float
+
+  return Return @relation(fields: [returnId], references: [id], onDelete: Cascade)
+
+  @@map("return_items")
+}
+
+// ── Service Jobs ─────────────────────────────────────────────────────────────
+
+model ServiceJob {
+  id             String    @id @default(cuid())
+  jobNumber      String    @unique
+  customerId     String
+  customerName   String
+  customerPhone  String?
+  productId      String?
+  productName    String
+  serialNumber   String?
+  issue          String
+  diagnosis      String?
+  solution       String?
+  technicianId   String?
+  technicianName String?
+  status         String    @default("PENDING") // PENDING, DIAGNOSED, IN_PROGRESS, PARTS_ORDERED, COMPLETED, DELIVERED
+  priority       String    @default("NORMAL") // LOW, NORMAL, HIGH, URGENT
+  estimatedCost  Float?
+  actualCost     Float?
+  warrantyStatus String    @default("OUT_OF_WARRANTY") // IN_WARRANTY, OUT_OF_WARRANTY
+  receivedDate   DateTime  @default(now())
+  completedDate  DateTime?
+  deliveredDate  DateTime?
+  notes          String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  parts   ServicePart[]
+  charges ServiceCharge[]
+
+  @@map("service_jobs")
+}
+
+model ServicePart {
+  id         String @id @default(cuid())
+  jobId      String
+  partName   String
+  partNumber String?
+  quantity   Int
+  cost       Float
+  supplier   String?
+
+  job ServiceJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@map("service_parts")
+}
+
+model ServiceCharge {
+  id          String @id @default(cuid())
+  jobId       String
+  description String
+  amount      Float
+
+  job ServiceJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@map("service_charges")
+}
+
+// ── Customer Credit ──────────────────────────────────────────────────────────
+
+model CustomerCredit {
+  id          String   @id @default(cuid())
+  customerId  String   @unique
+  creditLimit Float    @default(0)
+  balance     Float    @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  transactions CreditTransaction[]
+
+  @@map("customer_credits")
+}
+
+model CreditTransaction {
+  id            String   @id @default(cuid())
+  creditId      String
+  type          String   // PURCHASE, PAYMENT, ADJUSTMENT
+  amount        Float
+  balance       Float
+  reference     String?
+  description   String?
+  performedBy   String?
+  createdAt     DateTime @default(now())
+
+  credit CustomerCredit @relation(fields: [creditId], references: [id], onDelete: Cascade)
+
+  @@map("credit_transactions")
 }
 
 // ── Settings ─────────────────────────────────────────────────────────────────

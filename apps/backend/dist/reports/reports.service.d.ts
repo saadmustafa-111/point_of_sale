@@ -6,6 +6,8 @@ export declare class ReportsService {
         date: string;
         count: number;
         total: number;
+        discount: number;
+        itemsSold: number;
         sales: ({
             items: {
                 id: string;

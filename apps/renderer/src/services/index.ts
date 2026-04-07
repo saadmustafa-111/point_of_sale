@@ -72,3 +72,43 @@ export const settingsService = {
   set: (key: string, value: string)      => api.put(`/settings/${key}`, { value }).then((r) => r.data),
   bulk: (entries: {key:string;value:string}[]) => api.put('/settings', { entries }).then((r) => r.data),
 };
+
+// ── Installments ──────────────────────────────────────────────────────────────
+export const installmentsService = {
+  createPlan: (data: any)        => api.post('/installments/plans', data).then((r) => r.data),
+  getAll: (status?: string)      => api.get('/installments/plans', { params: { status } }).then((r) => r.data),
+  getPlan: (id: string)          => api.get(`/installments/plans/${id}`).then((r) => r.data),
+  getPlanBySale: (saleId: string) => api.get(`/installments/plans/sale/${saleId}`).then((r) => r.data),
+  recordPayment: (data: any)     => api.post('/installments/payments', data).then((r) => r.data),
+  updatePlan: (id: string, d: any) => api.put(`/installments/plans/${id}`, d).then((r) => r.data),
+  getOverdue: ()                 => api.get('/installments/overdue').then((r) => r.data),
+  getUpcoming: (days?: number)   => api.get('/installments/upcoming', { params: { days } }).then((r) => r.data),
+  markOverdue: ()                => api.post('/installments/mark-overdue').then((r) => r.data),
+};
+
+// ── Returns & Exchanges ───────────────────────────────────────────────────────
+export const returnsService = {
+  create: (data: any)            => api.post('/returns', data).then((r) => r.data),
+  getAll: (status?: string, type?: string) => 
+    api.get('/returns', { params: { status, type } }).then((r) => r.data),
+  getOne: (id: string)           => api.get(`/returns/${id}`).then((r) => r.data),
+  update: (id: string, d: any)   => api.put(`/returns/${id}`, d).then((r) => r.data),
+  approve: (id: string, approvedBy: string) => 
+    api.post(`/returns/${id}/approve`, { approvedBy }).then((r) => r.data),
+  reject: (id: string, approvedBy: string, notes?: string) => 
+    api.post(`/returns/${id}/reject`, { approvedBy, notes }).then((r) => r.data),
+  complete: (id: string)         => api.post(`/returns/${id}/complete`).then((r) => r.data),
+};
+
+// ── Service & Repair ──────────────────────────────────────────────────────────
+export const serviceService = {
+  createJob: (data: any)         => api.post('/service/jobs', data).then((r) => r.data),
+  getAll: (status?: string, priority?: string) => 
+    api.get('/service/jobs', { params: { status, priority } }).then((r) => r.data),
+  getJob: (id: string)           => api.get(`/service/jobs/${id}`).then((r) => r.data),
+  updateJob: (id: string, d: any) => api.put(`/service/jobs/${id}`, d).then((r) => r.data),
+  addParts: (data: any)          => api.post('/service/parts', data).then((r) => r.data),
+  addCharges: (data: any)        => api.post('/service/charges', data).then((r) => r.data),
+  getByCustomer: (customerId: string) => api.get(`/service/customer/${customerId}`).then((r) => r.data),
+  getStats: ()                   => api.get('/service/stats').then((r) => r.data),
+};

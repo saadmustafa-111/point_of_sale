@@ -125,6 +125,20 @@ let SalesService = class SalesService {
         });
         return sale;
     }
+    async deleteAll() {
+        return this.prisma.$transaction(async (tx) => {
+            const items = await tx.saleItem.findMany({ select: { productId: true, quantity: true } });
+            for (const item of items) {
+                await tx.product.update({
+                    where: { id: item.productId },
+                    data: { stock: { increment: item.quantity } },
+                });
+            }
+            await tx.inventoryLog.deleteMany({ where: { type: 'STOCK_OUT', reason: { startsWith: 'Sale ' } } });
+            await tx.saleItem.deleteMany({});
+            await tx.sale.deleteMany({});
+        });
+    }
 };
 exports.SalesService = SalesService;
 exports.SalesService = SalesService = __decorate([

@@ -3,6 +3,7 @@ import {
   LayoutDashboard, Package, Tag, Layers, Warehouse,
   Users, ShoppingCart, BarChart2, Settings,
   Store, Receipt, UserPlus, LogOut, ChevronRight,
+  CreditCard, RefreshCw,
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import toast from 'react-hot-toast';
@@ -14,6 +15,8 @@ const adminLinks = [
   { to: '/brands',    icon: Layers,          label: 'Brands' },
   { to: '/inventory', icon: Warehouse,       label: 'Inventory' },
   { to: '/sales',     icon: ShoppingCart,    label: 'All Sales' },
+  { to: '/installments', icon: CreditCard,   label: 'Installments' },
+  { to: '/returns',   icon: RefreshCw,       label: 'Returns/Exchange' },
   { to: '/users',     icon: Users,           label: 'Users' },
   { to: '/reports',   icon: BarChart2,       label: 'Reports' },
   { to: '/settings',  icon: Settings,        label: 'Settings' },

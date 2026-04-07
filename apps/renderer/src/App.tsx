@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+                                              import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './store/authStore';
 import LoginPage from './pages/LoginPage';
 import DashboardLayout from './layouts/DashboardLayout';
@@ -13,6 +13,8 @@ import UsersPage          from './pages/admin/UsersPage';
 import SalesAdminPage     from './pages/admin/SalesAdminPage';
 import ReportsPage        from './pages/admin/ReportsPage';
 import SettingsPage       from './pages/admin/SettingsPage';
+import InstallmentsPage   from './pages/admin/InstallmentsPage';
+import ReturnsPage        from './pages/admin/ReturnsPage';
 
 // Cashier pages
 import POSPage            from './pages/cashier/POSPage';
@@ -43,6 +45,8 @@ export default function App() {
         <Route path="inventory" element={<PrivateRoute adminOnly><InventoryPage /></PrivateRoute>} />
         <Route path="users"     element={<PrivateRoute adminOnly><UsersPage /></PrivateRoute>} />
         <Route path="sales"     element={<PrivateRoute adminOnly><SalesAdminPage /></PrivateRoute>} />
+        <Route path="installments" element={<PrivateRoute adminOnly><InstallmentsPage /></PrivateRoute>} />
+        <Route path="returns"   element={<PrivateRoute adminOnly><ReturnsPage /></PrivateRoute>} />
         <Route path="reports"   element={<PrivateRoute adminOnly><ReportsPage /></PrivateRoute>} />
         <Route path="settings"  element={<PrivateRoute adminOnly><SettingsPage /></PrivateRoute>} />
 

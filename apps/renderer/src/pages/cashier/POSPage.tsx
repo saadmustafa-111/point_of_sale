@@ -4,9 +4,10 @@ import { productsService, customersService, salesService, categoriesService, set
 import {
   Search, Trash2, Printer, CheckCircle, Plus, Minus,
   UserPlus, X, ChevronDown, Banknote, CreditCard, Building2, Calendar,
-  Package, Tag, ShieldCheck, Hash,
+  Package, Tag, ShieldCheck, Hash, Receipt,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { generateThermalReceiptHTML } from '../../components/ThermalReceipt';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -35,13 +36,28 @@ const PAYMENT_METHODS = [
 // ─── Invoice Print Modal ──────────────────────────────────────────────────────
 
 function InvoiceModal({ sale, settings, onClose }: { sale: any; settings: any; onClose: () => void }) {
+  const [printFormat, setPrintFormat] = useState<'thermal' | 'a4'>(settings?.receipt_format || 'thermal');
   const fmt = (n: number) => `PKR ${n.toLocaleString('en-PK', { minimumFractionDigits: 0 })}`;
   const shopName    = settings?.shop_name    || 'Home Appliances Shop';
   const shopAddress = settings?.shop_address || '';
   const shopPhone   = settings?.shop_phone   || '';
   const footer      = settings?.receipt_footer || 'Thank you for your purchase!';
 
-  const handlePrint = () => {
+  const handlePrintThermal = () => {
+    const html = generateThermalReceiptHTML(sale, settings);
+    const w = window as any;
+    if (w.electron?.printReceipt) {
+      w.electron.printReceipt(html);
+      toast.success('Printing thermal receipt...');
+    } else {
+      const win = window.open('', '_blank', 'width=400,height=800');
+      if (!win) { alert('Print blocked. Please allow popups.'); return; }
+      win.document.write(html);
+      win.document.close(); win.focus(); win.print(); win.close();
+    }
+  };
+
+  const handlePrintA4 = () => {
     const printContent = document.getElementById('invoice-content')!.innerHTML;
     const html = `<!DOCTYPE html><html><head><title>Invoice ${sale.invoiceNumber}</title>
       <style>
@@ -204,15 +220,47 @@ function InvoiceModal({ sale, settings, onClose }: { sale: any; settings: any; o
         </div>
 
         {/* Actions */}
-        <div className="flex gap-3 p-4 border-t border-slate-200">
-          <button onClick={handlePrint}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg border border-blue-600 text-blue-600 font-medium hover:bg-blue-50 transition-colors">
-            <Printer className="w-4 h-4" /> Print Invoice
-          </button>
-          <button onClick={onClose}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors">
-            <Plus className="w-4 h-4" /> New Sale
-          </button>
+        <div className="flex flex-col gap-3 p-4 border-t border-slate-200">
+          {/* Print Format Toggle */}
+          <div className="flex gap-2 p-2 bg-slate-100 rounded-lg">
+            <button
+              onClick={() => setPrintFormat('thermal')}
+              className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
+                printFormat === 'thermal'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              <Receipt className="w-4 h-4" /> Thermal Receipt (80mm)
+            </button>
+            <button
+              onClick={() => setPrintFormat('a4')}
+              className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
+                printFormat === 'a4'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              <Printer className="w-4 h-4" /> A4 Invoice
+            </button>
+          </div>
+
+          {/* Print and New Sale Buttons */}
+          <div className="flex gap-3">
+            <button
+              onClick={printFormat === 'thermal' ? handlePrintThermal : handlePrintA4}
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg border border-blue-600 text-blue-600 font-medium hover:bg-blue-50 transition-colors"
+            >
+              {printFormat === 'thermal' ? <Receipt className="w-4 h-4" /> : <Printer className="w-4 h-4" />}
+              Print {printFormat === 'thermal' ? 'Receipt' : 'Invoice'}
+            </button>
+            <button
+              onClick={onClose}
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors"
+            >
+              <Plus className="w-4 h-4" /> New Sale
+            </button>
+          </div>
         </div>
       </div>
     </div>

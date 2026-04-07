@@ -8,9 +8,14 @@ const FIELDS = [
   { key:'shop_name',     label:'Shop Name' },
   { key:'shop_address',  label:'Address' },
   { key:'shop_phone',    label:'Phone' },
+  { key:'tax_id',        label:'Tax/NTN Number' },
   { key:'currency',      label:'Currency' },
   { key:'receipt_footer',label:'Receipt Footer' },
   { key:'tax_rate',      label:'Tax Rate (%)' },
+  { key:'receipt_format',label:'Receipt Format', type:'select', options:[
+    { value:'thermal', label:'Thermal Receipt (80mm)' },
+    { value:'a4',      label:'A4 Invoice' }
+  ]},
 ];
 
 export default function SettingsPage() {
@@ -65,7 +70,20 @@ export default function SettingsPage() {
         {FIELDS.map(f=>(
           <div key={f.key}>
             <label className="label">{f.label}</label>
-            <input className="input" value={values[f.key]||''} onChange={e=>setValues(v=>({...v,[f.key]:e.target.value}))} />
+            {(f as any).type === 'select' ? (
+              <select 
+                className="input" 
+                value={values[f.key]||''} 
+                onChange={e=>setValues(v=>({...v,[f.key]:e.target.value}))}
+              >
+                <option value="">Select...</option>
+                {(f as any).options.map((opt: any) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            ) : (
+              <input className="input" value={values[f.key]||''} onChange={e=>setValues(v=>({...v,[f.key]:e.target.value}))} />
+            )}
           </div>
         ))}
         <div className="flex justify-end pt-2">

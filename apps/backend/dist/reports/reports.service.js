@@ -17,16 +17,17 @@ let ReportsService = class ReportsService {
         this.prisma = prisma;
     }
     async dailySales(date) {
-        const start = new Date(date);
-        start.setHours(0, 0, 0, 0);
-        const end = new Date(date);
-        end.setHours(23, 59, 59, 999);
+        const [y, m, d] = date.split('-').map(Number);
+        const start = new Date(y, m - 1, d, 0, 0, 0, 0);
+        const end = new Date(y, m - 1, d, 23, 59, 59, 999);
         const sales = await this.prisma.sale.findMany({
             where: { createdAt: { gte: start, lte: end } },
             include: { cashier: { select: { fullName: true } }, items: true },
         });
         const total = sales.reduce((s, sale) => s + sale.total, 0);
-        return { date, count: sales.length, total, sales };
+        const discount = sales.reduce((s, sale) => s + sale.discount, 0);
+        const itemsSold = sales.reduce((s, sale) => s + sale.items.reduce((si, i) => si + i.quantity, 0), 0);
+        return { date, count: sales.length, total, discount, itemsSold, sales };
     }
     async monthlySales(year, month) {
         const start = new Date(year, month - 1, 1);

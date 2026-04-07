@@ -2,11 +2,12 @@ import { SettingsService } from './settings.service';
 declare class UpsertSettingDto {
     value: string;
 }
+declare class SettingEntryDto {
+    key: string;
+    value: string;
+}
 declare class BulkUpsertDto {
-    entries: {
-        key: string;
-        value: string;
-    }[];
+    entries: SettingEntryDto[];
 }
 export declare class SettingsController {
     private service;

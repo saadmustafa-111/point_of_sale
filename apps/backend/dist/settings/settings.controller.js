@@ -16,6 +16,7 @@ exports.SettingsController = void 0;
 const common_1 = require("@nestjs/common");
 const swagger_1 = require("@nestjs/swagger");
 const class_validator_1 = require("class-validator");
+const class_transformer_1 = require("class-transformer");
 const settings_service_1 = require("./settings.service");
 const jwt_auth_guard_1 = require("../common/guards/jwt-auth.guard");
 const roles_guard_1 = require("../common/guards/roles.guard");
@@ -27,8 +28,24 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], UpsertSettingDto.prototype, "value", void 0);
+class SettingEntryDto {
+}
+__decorate([
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], SettingEntryDto.prototype, "key", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], SettingEntryDto.prototype, "value", void 0);
 class BulkUpsertDto {
 }
+__decorate([
+    (0, class_validator_1.IsArray)(),
+    (0, class_validator_1.ValidateNested)({ each: true }),
+    (0, class_transformer_1.Type)(() => SettingEntryDto),
+    __metadata("design:type", Array)
+], BulkUpsertDto.prototype, "entries", void 0);
 let SettingsController = class SettingsController {
     constructor(service) {
         this.service = service;
