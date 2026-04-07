@@ -1,0 +1,78 @@
+{
+  "name": "pos-system",
+  "version": "1.0.0",
+  "description": "Professional POS System for Home Appliances Shop",
+  "main": "electron/main.js",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:renderer\" \"wait-on http://localhost:5173 && npm run dev:electron\"",
+    "dev:electron": "cross-env NODE_ENV=development electron .",
+    "dev:renderer": "npm --prefix apps/renderer run dev",
+    "backend:dev": "npm --prefix apps/backend run start:dev",
+    "backend:build": "cd apps/backend && rm -f tsconfig.tsbuildinfo && node_modules/.bin/tsc --project tsconfig.json",
+    "backend:migrate": "npm --prefix apps/backend run prisma:migrate",
+    "backend:seed": "npm --prefix apps/backend run prisma:seed",
+    "build": "npm run backend:build && npm --prefix apps/renderer run build && electron-builder",
+    "build:mac": "npm run backend:build && npm --prefix apps/renderer run build && electron-builder --mac",
+    "build:win": "npm run backend:build && npm --prefix apps/renderer run build && electron-builder --win"
+  },
+  "author": "saad",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "cross-env": "^7.0.3",
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1",
+    "wait-on": "^7.2.0"
+  },
+  "build": {
+    "appId": "com.pos.homeappliances",
+    "productName": "POS System",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "files": [
+      "electron/**/*",
+      "apps/renderer/dist/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "apps/backend",
+        "to": "backend",
+        "filter": [
+          "dist/**/*",
+          "node_modules/**/*",
+          "prisma/migrations/**/*",
+          "prisma/schema.prisma",
+          ".env"
+        ]
+      },
+      {
+        "from": "apps/backend/prisma/pos.db",
+        "to": "pos.db"
+      }
+    ],
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "category": "public.app-category.business"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "linux": {
+      "target": "AppImage"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    }
+  }
+}
