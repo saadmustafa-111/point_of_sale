@@ -14,6 +14,8 @@ import { SettingsModule } from './settings/settings.module';
 import { InstallmentsModule } from './installments/installments.module';
 import { ReturnsModule } from './returns/returns.module';
 import { ServiceModule } from './service/service.module';
+import { SuppliersModule } from './suppliers/suppliers.module';
+import { PurchasesModule } from './purchases/purchases.module';
 
 @Module({
   imports: [
@@ -32,6 +34,8 @@ import { ServiceModule } from './service/service.module';
     InstallmentsModule,
     ReturnsModule,
     ServiceModule,
+    SuppliersModule,
+    PurchasesModule,
   ],
 })
 export class AppModule {}

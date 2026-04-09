@@ -112,3 +112,29 @@ export const serviceService = {
   getByCustomer: (customerId: string) => api.get(`/service/customer/${customerId}`).then((r) => r.data),
   getStats: ()                   => api.get('/service/stats').then((r) => r.data),
 };
+
+// ── Suppliers ─────────────────────────────────────────────────────────────────
+export const suppliersService = {
+  getAll: (search?: string)      => api.get('/suppliers', { params: { search } }).then((r) => r.data),
+  getOne: (id: string)           => api.get(`/suppliers/${id}`).then((r) => r.data),
+  getSummary: ()                 => api.get('/suppliers/summary').then((r) => r.data),
+  create: (data: any)            => api.post('/suppliers', data).then((r) => r.data),
+  update: (id: string, d: any)   => api.put(`/suppliers/${id}`, d).then((r) => r.data),
+};
+
+// ── Purchases (Purchase Orders + Supplier Payments) ───────────────────────────
+export const purchasesService = {
+  // Orders
+  createOrder: (data: any)       => api.post('/purchases/orders', data).then((r) => r.data),
+  getOrders: (supplierId?: string, status?: string) =>
+    api.get('/purchases/orders', { params: { supplierId, status } }).then((r) => r.data),
+  getOrder: (id: string)         => api.get(`/purchases/orders/${id}`).then((r) => r.data),
+  receiveOrder: (id: string, data: any) => api.post(`/purchases/orders/${id}/receive`, data).then((r) => r.data),
+  cancelOrder: (id: string)      => api.post(`/purchases/orders/${id}/cancel`).then((r) => r.data),
+  // Payments
+  recordPayment: (data: any)     => api.post('/purchases/payments', data).then((r) => r.data),
+  getPayments: (supplierId?: string, orderId?: string) =>
+    api.get('/purchases/payments', { params: { supplierId, orderId } }).then((r) => r.data),
+  // Stats
+  getStats: ()                   => api.get('/purchases/stats').then((r) => r.data),
+};

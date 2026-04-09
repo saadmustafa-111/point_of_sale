@@ -15,6 +15,8 @@ import ReportsPage        from './pages/admin/ReportsPage';
 import SettingsPage       from './pages/admin/SettingsPage';
 import InstallmentsPage   from './pages/admin/InstallmentsPage';
 import ReturnsPage        from './pages/admin/ReturnsPage';
+import SuppliersPage      from './pages/admin/SuppliersPage';
+import PurchasesPage      from './pages/admin/PurchasesPage';
 
 // Cashier pages
 import POSPage            from './pages/cashier/POSPage';
@@ -47,6 +49,8 @@ export default function App() {
         <Route path="sales"     element={<PrivateRoute adminOnly><SalesAdminPage /></PrivateRoute>} />
         <Route path="installments" element={<PrivateRoute adminOnly><InstallmentsPage /></PrivateRoute>} />
         <Route path="returns"   element={<PrivateRoute adminOnly><ReturnsPage /></PrivateRoute>} />
+        <Route path="suppliers" element={<PrivateRoute adminOnly><SuppliersPage /></PrivateRoute>} />
+        <Route path="purchases" element={<PrivateRoute adminOnly><PurchasesPage /></PrivateRoute>} />
         <Route path="reports"   element={<PrivateRoute adminOnly><ReportsPage /></PrivateRoute>} />
         <Route path="settings"  element={<PrivateRoute adminOnly><SettingsPage /></PrivateRoute>} />
 
