@@ -6,3 +6,4 @@ release/
 *.dmg
 *.exe
 *.AppImage
+config.bat

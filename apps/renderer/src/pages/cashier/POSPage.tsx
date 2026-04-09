@@ -1,10 +1,10 @@
 import { useState, useRef, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { productsService, customersService, salesService, categoriesService, settingsService } from '../../services';
+import { productsService, customersService, salesService, categoriesService, settingsService, installmentsService } from '../../services';
 import {
   Search, Trash2, Printer, CheckCircle, Plus, Minus,
-  UserPlus, X, ChevronDown, Banknote, CreditCard, Building2, Calendar,
-  Package, Tag, ShieldCheck, Hash, Receipt,
+  UserPlus, X, Banknote, CreditCard, Building2, Calendar,
+  Package, Tag, ShieldCheck, Hash, Receipt, Info,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { generateThermalReceiptHTML } from '../../components/ThermalReceipt';
@@ -35,7 +35,7 @@ const PAYMENT_METHODS = [
 
 // ─── Invoice Print Modal ──────────────────────────────────────────────────────
 
-function InvoiceModal({ sale, settings, onClose }: { sale: any; settings: any; onClose: () => void }) {
+function InvoiceModal({ sale, settings, installmentPlan, onClose }: { sale: any; settings: any; installmentPlan?: any; onClose: () => void }) {
   const [printFormat, setPrintFormat] = useState<'thermal' | 'a4'>(settings?.receipt_format || 'thermal');
   const fmt = (n: number) => `PKR ${n.toLocaleString('en-PK', { minimumFractionDigits: 0 })}`;
   const shopName    = settings?.shop_name    || 'Home Appliances Shop';
@@ -213,6 +213,43 @@ function InvoiceModal({ sale, settings, onClose }: { sale: any; settings: any; o
             </div>
           )}
 
+          {/* Installment Plan Details */}
+          {sale.paymentMethod === 'INSTALLMENT' && installmentPlan && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 text-xs text-blue-800">
+              <p className="font-semibold mb-2 flex items-center gap-1">
+                <Calendar className="w-3.5 h-3.5" /> Installment Plan Details
+              </p>
+              <div className="grid grid-cols-2 gap-y-1.5 gap-x-4">
+                <div className="flex justify-between">
+                  <span className="text-blue-600">Down Payment</span>
+                  <span className="font-bold">PKR {(installmentPlan.downPayment ?? 0).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-blue-600">Monthly Payment</span>
+                  <span className="font-bold">PKR {(installmentPlan.monthlyAmount ?? 0).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-blue-600">Installments</span>
+                  <span className="font-bold">{installmentPlan.installments} months</span>
+                </div>
+                {installmentPlan.payments?.[0]?.dueDate && (
+                  <div className="flex justify-between">
+                    <span className="text-blue-600">First Due Date</span>
+                    <span className="font-bold">{new Date(installmentPlan.payments[0].dueDate).toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          {sale.paymentMethod === 'INSTALLMENT' && !installmentPlan && (
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mb-4 text-xs text-orange-800">
+              <p className="font-semibold flex items-center gap-1">
+                <Info className="w-3.5 h-3.5" /> Installment Plan Pending
+              </p>
+              <p className="mt-0.5 text-orange-700">Go to Installments page to create a payment plan for this sale.</p>
+            </div>
+          )}
+
           {/* Footer */}
           <div className="text-center border-t border-dashed border-slate-300 pt-3 text-xs text-slate-500">
             <p>{footer}</p>
@@ -301,6 +338,161 @@ function AddCustomerModal({ onSave, onClose }: { onSave: (c: any) => void; onClo
   );
 }
 
+// ─── Installment Plan Modal ───────────────────────────────────────────────────
+
+function InstallmentPlanModal({
+  total,
+  saleId,
+  customerName,
+  onDone,
+  onSkip,
+}: {
+  total: number;
+  saleId: string;
+  customerName: string;
+  onDone: (plan: any) => void;
+  onSkip: () => void;
+}) {
+  const [downPayment, setDownPayment] = useState('');
+  const [months, setMonths] = useState('6');
+  const [startDate, setStartDate] = useState(new Date().toISOString().slice(0, 10));
+
+  const downNum   = parseFloat(downPayment) || 0;
+  const monthsNum = parseInt(months) || 1;
+  const remaining = Math.max(0, total - downNum);
+  const monthly   = monthsNum > 0 ? +(remaining / monthsNum).toFixed(2) : 0;
+
+  const mut = useMutation({
+    mutationFn: () =>
+      installmentsService.createPlan({
+        saleId,
+        totalAmount: total,
+        downPayment: downNum,
+        monthlyAmount: monthly,
+        installments: monthsNum,
+        startDate,
+      }),
+    onSuccess: (plan) => {
+      toast.success('Installment plan created!');
+      onDone(plan);
+    },
+    onError: (e: any) => toast.error(e.response?.data?.message || 'Failed to create plan'),
+  });
+
+  return (
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl w-full max-w-md p-6 shadow-2xl">
+        {/* Header */}
+        <div className="flex items-center gap-3 mb-5">
+          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+            <Calendar className="w-5 h-5 text-blue-600" />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-gray-900">Create Installment Plan</h2>
+            <p className="text-sm text-gray-500">Customer: <strong>{customerName}</strong></p>
+          </div>
+        </div>
+
+        {/* Sale total */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-5 flex justify-between text-sm">
+          <span className="text-blue-700 font-medium">Sale Total</span>
+          <span className="text-blue-900 font-bold">PKR {total.toLocaleString()}</span>
+        </div>
+
+        <div className="space-y-4">
+          {/* Down Payment */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Down Payment (PKR) <span className="text-gray-400 font-normal">— paid today</span>
+            </label>
+            <input
+              type="number"
+              value={downPayment}
+              onChange={e => setDownPayment(e.target.value)}
+              min="0"
+              max={total}
+              placeholder="0"
+              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+
+          {/* Number of Months */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Number of Monthly Installments</label>
+            <div className="flex gap-2">
+              {[3, 6, 9, 12, 18, 24].map(m => (
+                <button
+                  key={m}
+                  onClick={() => setMonths(String(m))}
+                  className={`flex-1 py-2 rounded-lg text-sm font-semibold border transition-colors ${
+                    months === String(m)
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400'
+                  }`}
+                >
+                  {m}m
+                </button>
+              ))}
+            </div>
+            <input
+              type="number"
+              value={months}
+              onChange={e => setMonths(e.target.value)}
+              min="1"
+              max="60"
+              className="w-full mt-2 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+              placeholder="Or enter custom months"
+            />
+          </div>
+
+          {/* Start Date */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">First Installment Date</label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={e => setStartDate(e.target.value)}
+              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          {/* Summary */}
+          <div className="bg-gray-50 border rounded-lg p-4 space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-gray-500">Down Payment</span>
+              <span className="font-semibold">PKR {downNum.toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-500">Remaining on Credit</span>
+              <span className="font-semibold text-orange-600">PKR {remaining.toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between border-t pt-2 mt-1">
+              <span className="text-gray-700 font-medium">Monthly Payment × {monthsNum}</span>
+              <span className="font-bold text-blue-700 text-base">PKR {monthly.toLocaleString()}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-3 mt-6">
+          <button
+            onClick={onSkip}
+            className="flex-1 py-2.5 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 text-sm font-medium"
+          >
+            Skip — Add Plan Later
+          </button>
+          <button
+            onClick={() => mut.mutate()}
+            disabled={mut.isPending || monthsNum < 1 || !startDate}
+            className="flex-1 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold text-sm"
+          >
+            {mut.isPending ? 'Creating...' : 'Create Plan ✓'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main POSPage ─────────────────────────────────────────────────────────────
 
 export default function POSPage() {
@@ -320,6 +512,11 @@ export default function POSPage() {
   const [showCustDropdown, setShowCustDropdown] = useState(false);
   const [showAddCustomer, setShowAddCustomer] = useState(false);
   const [lastSale, setLastSale]           = useState<any>(null);
+  const [showInstallmentModal, setShowInstallmentModal] = useState(false);
+  const [lastInstallmentPlan, setLastInstallmentPlan] = useState<any>(null);
+
+  // Ref to capture paymentMethod at the moment of checkout (avoids stale closure)
+  const paymentMethodRef = useRef<string>('CASH');
 
   // Queries
   const { data: categories = [] } = useQuery({ queryKey: ['categories'], queryFn: categoriesService.getAll });
@@ -360,11 +557,12 @@ export default function POSPage() {
       setCart([]);
       setDiscount(0);
       setAmountPaid('');
-      setCustomerId('');
-      setCustomerName('');
-      setCustomerSearch('');
       qc.invalidateQueries({ queryKey: ['products'] });
       toast.success(`Invoice ${data.invoiceNumber} created!`);
+      // Use ref to reliably read paymentMethod at time of checkout
+      if (paymentMethodRef.current === 'INSTALLMENT') {
+        setShowInstallmentModal(true);
+      }
     },
     onError: (err: any) => toast.error(err.response?.data?.message || 'Sale failed'),
   });
@@ -418,6 +616,8 @@ export default function POSPage() {
   const handleCheckout = () => {
     if (!cart.length) return toast.error('Cart is empty');
     if (paymentMethod === 'CASH' && paidNum < total) return toast.error('Amount paid is less than total');
+    if (paymentMethod === 'INSTALLMENT' && !customerId) return toast.error('Please select a customer for installment sale');
+    paymentMethodRef.current = paymentMethod; // capture before async
     saleMut.mutate({
       items: cart.map(i => ({
         productId: i.productId, quantity: i.quantity, unitPrice: i.unitPrice,
@@ -684,9 +884,26 @@ export default function POSPage() {
             </div>
           )}
 
+          {/* Installment info box */}
+          {paymentMethod === 'INSTALLMENT' && (
+            <div className={`rounded-xl p-3 text-sm border ${customerId ? 'bg-blue-50 border-blue-200 text-blue-800' : 'bg-orange-50 border-orange-200 text-orange-800'}`}>
+              {customerId ? (
+                <p className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-blue-600 shrink-0" />
+                  <span>Customer <strong>{customerName}</strong> selected. An installment plan will be created after checkout.</span>
+                </p>
+              ) : (
+                <p className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-orange-600 shrink-0" />
+                  <span><strong>Select a customer</strong> above to proceed with installment sale.</span>
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Checkout Button */}
           <button onClick={handleCheckout}
-            disabled={saleMut.isPending || cart.length === 0 || (paymentMethod === 'CASH' && paidNum > 0 && paidNum < total)}
+            disabled={saleMut.isPending || cart.length === 0 || (paymentMethod === 'CASH' && paidNum > 0 && paidNum < total) || (paymentMethod === 'INSTALLMENT' && !customerId)}
             className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-base transition-colors">
             <CheckCircle className="w-5 h-5" />
             {saleMut.isPending ? 'Processing…' : `Complete Sale · PKR ${total.toLocaleString()}`}
@@ -700,8 +917,30 @@ export default function POSPage() {
           onSave={(c) => { setCustomerId(c.id); setCustomerName(c.name); setCustomerSearch(c.name); setShowAddCustomer(false); }}
           onClose={() => setShowAddCustomer(false)} />
       )}
-      {lastSale && (
-        <InvoiceModal sale={lastSale} settings={settings} onClose={() => setLastSale(null)} />
+      {showInstallmentModal && lastSale && (
+        <InstallmentPlanModal
+          total={lastSale.total}
+          saleId={lastSale.id}
+          customerName={lastSale.customer?.name || customerName}
+          onDone={(plan) => {
+            setLastInstallmentPlan(plan);
+            setShowInstallmentModal(false);
+            setCustomerId(''); setCustomerName(''); setCustomerSearch('');
+          }}
+          onSkip={() => {
+            setLastInstallmentPlan(null);
+            setShowInstallmentModal(false);
+            setCustomerId(''); setCustomerName(''); setCustomerSearch('');
+          }}
+        />
+      )}
+      {lastSale && !showInstallmentModal && (
+        <InvoiceModal
+          sale={lastSale}
+          settings={settings}
+          installmentPlan={lastInstallmentPlan}
+          onClose={() => { setLastSale(null); setLastInstallmentPlan(null); }}
+        />
       )}
     </div>
   );
