@@ -2,12 +2,12 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   plugins: [react()],
   resolve: {
     alias: { '@': path.resolve(__dirname, 'src') },
   },
-  server: {
+  server: command === 'serve' ? {
     port: 5173,
     proxy: {
       '/api': {
@@ -15,9 +15,9 @@ export default defineConfig({
         changeOrigin: true,
       },
     },
-  },
+  } : undefined,
   build: {
     outDir: 'dist',
     emptyOutDir: true,
   },
-});
+}));
