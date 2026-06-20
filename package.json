@@ -10,7 +10,7 @@
     "backend:dev": "npm --prefix apps/backend run start:dev",
     "backend:build": "npm --prefix apps/backend run build",
     "build:backend": "npm --prefix apps/backend run build",
-    "build:renderer": "npm --prefix apps/renderer run build",
+    "build:renderer": "npm --prefix apps/renderer run build:ci",
     "build:renderer:ci": "npm --prefix apps/renderer run build:ci",
     "build:electron:win": "electron-builder --win --publish never",
     "build:electron:mac": "electron-builder --mac --publish never",
