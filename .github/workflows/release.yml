@@ -64,35 +64,64 @@ jobs:
           $backendNodeModuleFiles = (Get-ChildItem "apps/backend/node_modules" -Recurse -Force -File | Measure-Object).Count
           Write-Host "apps/backend/node_modules file count: $backendNodeModuleFiles"
 
-      - name: Build Windows unpacked app
+      - name: Report largest backend dependency folders
         shell: pwsh
         run: |
-          $env:DEBUG = "electron-builder,electron-builder:*"
-          npx electron-builder --win --x64 --dir
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          Write-Host "Top 20 largest package folders inside apps/backend/node_modules"
+          $packages = @()
+          Get-ChildItem "apps/backend/node_modules" -Directory -Force | ForEach-Object {
+            if ($_.Name.StartsWith("@")) {
+              $packages += Get-ChildItem $_.FullName -Directory -Force
+            } else {
+              $packages += $_
+            }
+          }
 
-      - name: Check Windows unpacked size
-        shell: pwsh
-        run: |
-          dir dist-electron
-          $bytes = (Get-ChildItem "dist-electron/win-unpacked" -Recurse -Force -File | Measure-Object Length -Sum).Sum
-          $mb = [Math]::Round(($bytes / 1MB), 2)
-          $files = (Get-ChildItem "dist-electron/win-unpacked" -Recurse -Force -File | Measure-Object).Count
-          Write-Host "dist-electron/win-unpacked size before portable packaging: $mb MB"
-          Write-Host "dist-electron/win-unpacked file count: $files"
+          $packages |
+            ForEach-Object {
+              $bytes = (Get-ChildItem $_.FullName -Recurse -Force -File | Measure-Object Length -Sum).Sum
+              [PSCustomObject]@{
+                SizeMB = [Math]::Round(($bytes / 1MB), 2)
+                Path = $_.FullName.Replace((Get-Location).Path + "\", "")
+              }
+            } |
+            Sort-Object SizeMB -Descending |
+            Select-Object -First 20 |
+            Format-Table -AutoSize
 
       - name: Build Windows portable EXE
         shell: pwsh
         run: |
+          Write-Host "START BUILD"
+          Write-Host "COMMAND: npx electron-builder --win --x64 --publish never"
           $env:DEBUG = "electron-builder,electron-builder:*"
-          npx electron-builder --win --x64 --publish never
+          & npx electron-builder --win --x64 --publish never
+          $exitCode = $LASTEXITCODE
+          Write-Host "END BUILD exit code: $exitCode"
+          if ($exitCode -ne 0) {
+            throw "Windows portable build failed. Command: npx electron-builder --win --x64 --publish never. Exit code: $exitCode"
+          }
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Check Windows artifacts
+        if: always()
         shell: pwsh
-        run: dir dist-electron
+        run: |
+          if (Test-Path "dist-electron") {
+            dir dist-electron
+          } else {
+            Write-Host "dist-electron folder does not exist"
+          }
+
+          $expected = "dist-electron/POS-System-1.0.0-win-x64-portable.exe"
+          if (Test-Path $expected) {
+            Write-Host "Found expected portable EXE: $expected"
+          } else {
+            Write-Host "Expected portable EXE missing: $expected"
+            Write-Host "Available EXE files:"
+            Get-ChildItem "dist-electron" -Filter "*.exe" -File -ErrorAction SilentlyContinue
+          }
 
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
