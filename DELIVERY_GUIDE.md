@@ -156,7 +156,7 @@ Build the app:
 npm run build
 ```
 
-Build Windows portable EXE:
+Build Windows ZIP package:
 
 ```bash
 npm run build:win
@@ -218,7 +218,7 @@ GitHub Actions will then:
 2. Generate the Prisma client.
 3. Build the NestJS backend.
 4. Build the React/Vite renderer.
-5. Build the Electron Windows portable EXE on `windows-latest`.
+5. Build the Electron Windows ZIP package on `windows-latest`.
 6. Build the Electron macOS DMG on `macos-latest`.
 7. Upload the installers to the GitHub Release.
 
@@ -227,7 +227,7 @@ GitHub Actions will then:
 For Windows clients:
 
 ```text
-Download POS-System-1.0.0-win-x64-portable.exe from GitHub Releases.
+Download POS-System-1.0.1-win-x64.zip from GitHub Releases.
 ```
 
 For Mac clients:
@@ -241,32 +241,33 @@ Install or run the same app on both the main/server computer and cashier/client 
 - Main/admin computer: choose **Server / Main Computer**.
 - Cashier computer: choose **Client / Cashier Computer** and enter the server API URL.
 
-### Windows Portable EXE
+### Windows ZIP Delivery
 
-The Windows release is currently delivered as a portable EXE. It does not need a normal installer.
+The Windows release is delivered as a ZIP file. This avoids the slow single-EXE portable packing step and is more reliable for this POS because the backend runtime contains many Node/Prisma files.
 
 1. Download:
 
 ```text
-POS-System-1.0.0-win-x64-portable.exe
+POS-System-1.0.1-win-x64.zip
 ```
 
-2. Create a folder:
+2. Right-click the ZIP and choose **Extract All**.
+3. Extract it to:
 
 ```text
 C:\POS-System\
 ```
 
-3. Put the portable EXE inside that folder.
-4. Right-click the EXE and choose **Create shortcut**.
-5. Move the shortcut to the Desktop.
-6. Open the app from the shortcut.
-7. On the main/admin PC, choose **Server / Main Computer**.
-8. On cashier PCs, choose **Client / Cashier Computer**.
+4. Open the extracted folder.
+5. Open `POS System.exe`.
+6. Right-click `POS System.exe` and choose **Create shortcut**.
+7. Move the shortcut to the Desktop.
+8. On the main/admin PC, choose **Server / Main Computer**.
+9. On cashier PCs, choose **Client / Cashier Computer**.
 
 Do not delete the `C:\POS-System\` folder after setup.
 
-The portable EXE may not create Start Menu shortcuts automatically. POS data is still saved in the app user-data folder and server database location, not only inside the EXE file. The main/server PC must still stay turned on for cashier computers to login and create sales.
+The ZIP version works the same after extraction, but it does not create Start Menu shortcuts automatically. POS data is still saved in the app user-data folder and server database location, not inside the ZIP file. The main/server PC must still stay turned on for cashier computers to login and create sales.
 
 ### Production Database Location
 

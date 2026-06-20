@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   build-windows:
-    name: Build Windows Portable EXE
+    name: Build Windows ZIP
     runs-on: windows-latest
     timeout-minutes: 45
 
@@ -48,7 +48,7 @@ jobs:
       - name: Print pre-package size report
         run: npm run release:size-report
 
-      - name: Build Windows portable EXE
+      - name: Build Windows ZIP
         shell: pwsh
         run: |
           Write-Host "START BUILD $(Get-Date -Format o)"
@@ -58,7 +58,7 @@ jobs:
           $exitCode = $LASTEXITCODE
           Write-Host "END BUILD $(Get-Date -Format o) exit code: $exitCode"
           if ($exitCode -ne 0) {
-            throw "Windows portable build failed. Command: npx electron-builder --win --x64 --publish never. Exit code: $exitCode"
+            throw "Windows ZIP build failed. Command: npx electron-builder --win --x64 --publish never. Exit code: $exitCode"
           }
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -77,19 +77,19 @@ jobs:
             Write-Host "dist-electron folder does not exist"
           }
 
-          $exeFiles = Get-ChildItem "dist-electron" -Filter "*.exe" -File -ErrorAction SilentlyContinue
-          if ($exeFiles) {
-            Write-Host "Portable EXE artifacts:"
-            $exeFiles
+          $zipFiles = Get-ChildItem "dist-electron" -Filter "*.zip" -File -ErrorAction SilentlyContinue
+          if ($zipFiles) {
+            Write-Host "Windows ZIP artifacts:"
+            $zipFiles
           } else {
-            Write-Host "No Windows portable EXE found in dist-electron"
+            Write-Host "No Windows ZIP found in dist-electron"
           }
 
-      - name: Upload Windows EXE
+      - name: Upload Windows ZIP
         uses: actions/upload-artifact@v4
         with:
-          name: windows-portable
-          path: dist-electron/*.exe
+          name: windows-zip
+          path: dist-electron/*.zip
           if-no-files-found: error
           retention-days: 90
 
@@ -160,10 +160,10 @@ jobs:
       - build-macos
 
     steps:
-      - name: Download Windows EXE
+      - name: Download Windows ZIP
         uses: actions/download-artifact@v4
         with:
-          name: windows-portable
+          name: windows-zip
           path: release-assets
 
       - name: Download Mac DMG
@@ -182,7 +182,7 @@ jobs:
             POS System ${{ github.ref_name }}
 
             Downloads:
-            - Windows: download the portable `.exe`.
+            - Windows: download the `.zip`, extract it, then run `POS System.exe`.
             - macOS: download the `.dmg` file.
 
             Security note:

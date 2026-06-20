@@ -1,6 +1,6 @@
 {
   "name": "pos-system",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Professional POS System for Home Appliances Shop",
   "main": "electron/main.js",
   "scripts": {
@@ -118,9 +118,9 @@
     },
     "win": {
       "target": [
-        "portable"
+        "zip"
       ],
-      "artifactName": "POS-System-${version}-win-x64-portable.${ext}"
+      "artifactName": "POS-System-${version}-win-x64.${ext}"
     },
     "linux": {
       "target": "AppImage"

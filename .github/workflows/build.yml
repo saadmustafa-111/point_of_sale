@@ -32,7 +32,7 @@ jobs:
             dist-electron/*.zip
 
   build-win:
-    name: Build Windows Portable EXE
+    name: Build Windows ZIP
     runs-on: windows-latest
     timeout-minutes: 45
     steps:
@@ -57,7 +57,7 @@ jobs:
           $exitCode = $LASTEXITCODE
           Write-Host "END BUILD $(Get-Date -Format o) exit code: $exitCode"
           if ($exitCode -ne 0) {
-            throw "Windows portable build failed. Command: npx electron-builder --win --x64 --publish never. Exit code: $exitCode"
+            throw "Windows ZIP build failed. Command: npx electron-builder --win --x64 --publish never. Exit code: $exitCode"
           }
       - if: always()
         run: npm run release:size-report
@@ -66,6 +66,6 @@ jobs:
         run: dir dist-electron
       - uses: actions/upload-artifact@v4
         with:
-          name: windows-portable
-          path: dist-electron/*.exe
+          name: windows-zip
+          path: dist-electron/*.zip
           if-no-files-found: error
