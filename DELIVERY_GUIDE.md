@@ -4,16 +4,18 @@ This POS is designed for one main/admin computer and optional cashier computers 
 
 ## 1. Main/Admin Computer
 
-Use the main computer as the server. This computer stores the central SQLite database and runs the backend API.
+Use the main computer as the server. This computer stores the central SQLite database in the app user-data folder and runs the backend API.
 
 1. Install the POS app.
 2. Open the app.
 3. On first run, choose **Server / Main Computer**.
-4. The app starts the backend on port `3000`.
-5. If this is a fresh server database, the app shows **Create First Admin**.
-6. Enter the shop/POS name, admin name, username, and password.
-7. Login with the admin account you created.
-8. Keep this computer turned on during business hours.
+4. The app creates the production SQLite database automatically if it does not exist.
+5. The app runs database migrations automatically.
+6. The app starts the backend on port `3000`.
+7. If this is a fresh server database, the app shows **Create First Admin**.
+8. Enter the shop/POS name, admin name, username, and password.
+9. Login with the admin account you created.
+10. Keep this computer turned on during business hours.
 
 The server API will be available as:
 
@@ -65,6 +67,7 @@ http://192.168.1.10:3000/api/v1
 - The backend runs on port `3000`.
 - The main computer firewall must allow incoming connections on port `3000`.
 - All sales, products, stock, users, customers, and reports are stored on the main computer.
+- The production database is created automatically in the app user-data folder on the main computer.
 
 If the main computer is off, cashier computers cannot login or create sales.
 
@@ -265,6 +268,26 @@ Do not delete the `C:\POS-System\` folder after setup.
 
 The portable EXE may not create Start Menu shortcuts automatically. POS data is still saved in the app user-data folder and server database location, not only inside the EXE file. The main/server PC must still stay turned on for cashier computers to login and create sales.
 
+### Production Database Location
+
+Do not package, copy, or depend on a development `pos.db` file for client delivery.
+
+On the main/server computer, the POS creates the production SQLite database automatically on first server startup. The database is stored in Electron's app user-data folder as:
+
+```text
+pos.db
+```
+
+The backend uses this writable database URL:
+
+```text
+file:<APP_USER_DATA>/pos.db
+```
+
+The app also runs Prisma migrations automatically before starting the backend. If no admin exists in this fresh database, the app shows **Create First Admin**.
+
+Do not delete the app user-data folder after setup. Deleting it removes the production database and local machine settings.
+
 ### Code Signing Note
 
 Do not store signing certificates, passwords, or other secrets directly in the repository.
@@ -309,6 +332,6 @@ Back on admin computer:
 
 ## 9. Backup Note
 
-Automatic backup/restore is not implemented yet. Until it is added, regularly back up the server computer database file.
+Automatic backup/restore is not implemented yet. Until it is added, regularly back up the server computer production database file from the app user-data folder.
 
-The packaged app stores its production database in the app user-data folder on the server computer. Keep this server computer safe and backed up.
+The packaged app stores its production database in the app user-data folder on the server computer. Keep this server computer safe and backed up. A useful backup must copy the runtime `pos.db` file, not a development or packaged database file.

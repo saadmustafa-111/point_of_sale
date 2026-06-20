@@ -93,10 +93,6 @@
           "!**/*.sqlite3",
           "!**/*.log"
         ]
-      },
-      {
-        "from": "apps/backend/prisma/prisma/pos.db",
-        "to": "pos.db"
       }
     ],
     "mac": {

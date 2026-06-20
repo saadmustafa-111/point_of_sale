@@ -4,7 +4,7 @@ const { app, BrowserWindow, ipcMain, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
-const { spawn } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
 const http = require('http');
 const https = require('https');
 
@@ -25,6 +25,10 @@ let freshDatabaseCreated = false;
 function getDbPath() {
   const userData = app.getPath('userData');
   return path.join(userData, 'pos.db');
+}
+
+function getDatabaseUrl(dbPath = getDbPath()) {
+  return `file:${dbPath.replace(/\\/g, '/')}`;
 }
 
 function getConfigPath() {
@@ -209,20 +213,53 @@ function getServerInfo() {
 
 function ensureDatabase() {
   const dbDest = getDbPath();
-  let created = false;
-  if (!fs.existsSync(dbDest)) {
-    const seed = isDev
-      ? path.join(__dirname, '../apps/backend/prisma/pos.db')
-      : path.join(process.resourcesPath, 'pos.db');
-    if (fs.existsSync(seed)) {
-      fs.copyFileSync(seed, dbDest);
-      created = true;
-      console.log('[DB] Copied seed database to', dbDest);
-    } else {
-      console.warn('[DB] No seed DB found at', seed);
-    }
+  const created = !fs.existsSync(dbDest);
+
+  fs.mkdirSync(path.dirname(dbDest), { recursive: true });
+
+  if (created) {
+    fs.closeSync(fs.openSync(dbDest, 'a'));
+    console.log('[DB] Created empty production database at', dbDest);
   }
+
+  if (!isDev) {
+    runPrismaMigrations(dbDest);
+  }
+
   return created;
+}
+
+function runPrismaMigrations(dbPath) {
+  const backendDir = path.join(process.resourcesPath, 'backend');
+  const schemaPath = path.join(backendDir, 'prisma', 'schema.prisma');
+  const prismaCli = path.join(backendDir, 'node_modules', 'prisma', 'build', 'index.js');
+
+  if (!fs.existsSync(schemaPath)) {
+    throw new Error(`Prisma schema not found at ${schemaPath}`);
+  }
+
+  if (!fs.existsSync(prismaCli)) {
+    throw new Error(`Prisma CLI not found at ${prismaCli}`);
+  }
+
+  console.log('[DB] Running Prisma migrations for', dbPath);
+  const result = spawnSync(process.execPath, [prismaCli, 'migrate', 'deploy', '--schema', schemaPath], {
+    cwd: backendDir,
+    env: {
+      ...process.env,
+      DATABASE_URL: getDatabaseUrl(dbPath),
+      NODE_ENV: 'production',
+      ELECTRON_RUN_AS_NODE: '1',
+    },
+    encoding: 'utf-8',
+  });
+
+  if (result.stdout) console.log('[DB]', result.stdout.trim());
+  if (result.stderr) console.error('[DB ERR]', result.stderr.trim());
+
+  if (result.status !== 0) {
+    throw new Error(`Prisma migrations failed with exit code ${result.status}`);
+  }
 }
 
 // ── Start NestJS backend ──────────────────────────────────────────────────────
@@ -235,7 +272,7 @@ function startBackend() {
 
   const env = {
     ...process.env,
-    DATABASE_URL: `file:${dbPath}`,
+    DATABASE_URL: getDatabaseUrl(dbPath),
     JWT_SECRET: 'pos_super_secret_2026_change_me',
     PORT: String(BACKEND_PORT),
     NODE_ENV: 'production',
