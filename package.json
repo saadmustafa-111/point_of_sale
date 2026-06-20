@@ -11,6 +11,7 @@
     "backend:build": "npm --prefix apps/backend run build",
     "build:backend": "npm --prefix apps/backend run build",
     "build:renderer": "npm --prefix apps/renderer run build",
+    "build:renderer:ci": "npm --prefix apps/renderer run build:ci",
     "build:electron:win": "electron-builder --win --publish never",
     "build:electron:mac": "electron-builder --mac --publish never",
     "backend:migrate": "npm --prefix apps/backend run prisma:migrate",
