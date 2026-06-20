@@ -57,6 +57,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Check Windows artifacts
+        shell: pwsh
+        run: dir dist-electron
+
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
         with:

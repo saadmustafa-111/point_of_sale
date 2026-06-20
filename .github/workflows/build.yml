@@ -52,6 +52,8 @@ jobs:
         run: |
           $env:DEBUG = "electron-builder,electron-builder:*"
           npx electron-builder --win --x64 --publish never
+      - shell: pwsh
+        run: dir dist-electron
       - uses: actions/upload-artifact@v4
         with:
           name: windows-installer
