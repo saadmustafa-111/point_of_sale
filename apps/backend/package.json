@@ -29,6 +29,7 @@
     "class-validator": "^0.14.1",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
+    "prisma": "^5.9.1",
     "reflect-metadata": "^0.2.1",
     "rxjs": "^7.8.1"
   },
@@ -37,7 +38,6 @@
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20.11.5",
     "@types/passport-jwt": "^4.0.1",
-    "prisma": "^5.9.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.3.3"
   }

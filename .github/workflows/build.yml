@@ -1,4 +1,4 @@
-name: Build POS Installers
+name: Build POS Apps
 
 on:
   workflow_dispatch:
@@ -40,6 +40,36 @@ jobs:
       - run: npm --prefix apps/backend run prisma:generate
       - run: npm run build:backend
       - run: npm run build:renderer
+      - run: npm prune --omit=dev --prefix apps/backend
+      - shell: pwsh
+        run: |
+          function Show-PathSize($Path) {
+            if (Test-Path $Path) {
+              $bytes = (Get-ChildItem $Path -Recurse -Force -File | Measure-Object Length -Sum).Sum
+              $mb = [Math]::Round(($bytes / 1MB), 2)
+              Write-Host "$Path size: $mb MB"
+            } else {
+              Write-Host "$Path missing"
+            }
+          }
+
+          Show-PathSize "apps/backend/node_modules"
+          Show-PathSize "apps/backend/dist"
+          Show-PathSize "apps/renderer/dist"
+          $backendNodeModuleFiles = (Get-ChildItem "apps/backend/node_modules" -Recurse -Force -File | Measure-Object).Count
+          Write-Host "apps/backend/node_modules file count: $backendNodeModuleFiles"
+      - shell: pwsh
+        run: |
+          $env:DEBUG = "electron-builder,electron-builder:*"
+          npx electron-builder --win --x64 --dir
+      - shell: pwsh
+        run: |
+          dir dist-electron
+          $bytes = (Get-ChildItem "dist-electron/win-unpacked" -Recurse -Force -File | Measure-Object Length -Sum).Sum
+          $mb = [Math]::Round(($bytes / 1MB), 2)
+          $files = (Get-ChildItem "dist-electron/win-unpacked" -Recurse -Force -File | Measure-Object).Count
+          Write-Host "dist-electron/win-unpacked size before portable packaging: $mb MB"
+          Write-Host "dist-electron/win-unpacked file count: $files"
       - shell: pwsh
         run: |
           $env:DEBUG = "electron-builder,electron-builder:*"
@@ -48,5 +78,5 @@ jobs:
         run: dir dist-electron
       - uses: actions/upload-artifact@v4
         with:
-          name: windows-installer
+          name: windows-portable
           path: dist-electron/*.exe

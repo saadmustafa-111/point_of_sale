@@ -1,4 +1,4 @@
-name: Release POS Installers
+name: Release POS Apps
 
 on:
   push:
@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   build-windows:
-    name: Build Windows Installer
+    name: Build Windows Portable EXE
     runs-on: windows-latest
     timeout-minutes: 45
 
@@ -42,7 +42,47 @@ jobs:
       - name: Build renderer
         run: npm run build:renderer
 
-      - name: Build Windows installer
+      - name: Prune backend dev dependencies
+        run: npm prune --omit=dev --prefix apps/backend
+
+      - name: Check package input sizes
+        shell: pwsh
+        run: |
+          function Show-PathSize($Path) {
+            if (Test-Path $Path) {
+              $bytes = (Get-ChildItem $Path -Recurse -Force -File | Measure-Object Length -Sum).Sum
+              $mb = [Math]::Round(($bytes / 1MB), 2)
+              Write-Host "$Path size: $mb MB"
+            } else {
+              Write-Host "$Path missing"
+            }
+          }
+
+          Show-PathSize "apps/backend/node_modules"
+          Show-PathSize "apps/backend/dist"
+          Show-PathSize "apps/renderer/dist"
+          $backendNodeModuleFiles = (Get-ChildItem "apps/backend/node_modules" -Recurse -Force -File | Measure-Object).Count
+          Write-Host "apps/backend/node_modules file count: $backendNodeModuleFiles"
+
+      - name: Build Windows unpacked app
+        shell: pwsh
+        run: |
+          $env:DEBUG = "electron-builder,electron-builder:*"
+          npx electron-builder --win --x64 --dir
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check Windows unpacked size
+        shell: pwsh
+        run: |
+          dir dist-electron
+          $bytes = (Get-ChildItem "dist-electron/win-unpacked" -Recurse -Force -File | Measure-Object Length -Sum).Sum
+          $mb = [Math]::Round(($bytes / 1MB), 2)
+          $files = (Get-ChildItem "dist-electron/win-unpacked" -Recurse -Force -File | Measure-Object).Count
+          Write-Host "dist-electron/win-unpacked size before portable packaging: $mb MB"
+          Write-Host "dist-electron/win-unpacked file count: $files"
+
+      - name: Build Windows portable EXE
         shell: pwsh
         run: |
           $env:DEBUG = "electron-builder,electron-builder:*"
@@ -57,7 +97,7 @@ jobs:
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
         with:
-          name: windows-installer
+          name: windows-portable
           path: dist-electron/*.exe
           if-no-files-found: error
           retention-days: 90
@@ -122,7 +162,7 @@ jobs:
       - name: Download Windows artifact
         uses: actions/download-artifact@v4
         with:
-          name: windows-installer
+          name: windows-portable
           path: release-assets
 
       - name: Download Mac artifact
@@ -141,7 +181,7 @@ jobs:
             POS System ${{ github.ref_name }}
 
             Downloads:
-            - Windows: download the `.exe` installer.
+            - Windows: download the portable `.exe`.
             - macOS: download the `.dmg` file.
 
             Security note:
