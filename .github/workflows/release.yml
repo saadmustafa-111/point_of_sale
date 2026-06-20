@@ -47,11 +47,20 @@ jobs:
           $env:DATABASE_URL = "file:./prisma/prisma/pos.db"
           npm --prefix apps/backend run prisma:migrate:prod
 
+      - name: Build backend
+        run: npm run build:backend
+
+      - name: Build renderer
+        run: npm run build:renderer
+
+      - name: Keep backend production dependencies only
+        run: npm prune --omit=dev --prefix apps/backend
+
       - name: Build Windows installer
         shell: pwsh
         run: |
-          $env:DEBUG = "electron-builder"
-          npm run build:win
+          $env:DEBUG = "electron-builder,electron-builder:*"
+          npm run build:electron:win
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -101,8 +110,17 @@ jobs:
           mkdir -p apps/backend/prisma/prisma
           DATABASE_URL=file:./prisma/prisma/pos.db npm --prefix apps/backend run prisma:migrate:prod
 
+      - name: Build backend
+        run: npm run build:backend
+
+      - name: Build renderer
+        run: npm run build:renderer
+
+      - name: Keep backend production dependencies only
+        run: npm prune --omit=dev --prefix apps/backend
+
       - name: Build macOS DMG
-        run: DEBUG=electron-builder npm run build:mac
+        run: DEBUG=electron-builder,electron-builder:* npm run build:electron:mac
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
