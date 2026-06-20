@@ -153,7 +153,7 @@ Build the app:
 npm run build
 ```
 
-Build Windows installer:
+Build Windows portable EXE:
 
 ```bash
 npm run build:win
@@ -215,7 +215,7 @@ GitHub Actions will then:
 2. Generate the Prisma client.
 3. Build the NestJS backend.
 4. Build the React/Vite renderer.
-5. Build the Electron Windows installer on `windows-latest`.
+5. Build the Electron Windows portable EXE on `windows-latest`.
 6. Build the Electron macOS DMG on `macos-latest`.
 7. Upload the installers to the GitHub Release.
 
@@ -224,7 +224,7 @@ GitHub Actions will then:
 For Windows clients:
 
 ```text
-Download the .exe installer from GitHub Releases.
+Download POS-System-1.0.0-win-x64-portable.exe from GitHub Releases.
 ```
 
 For Mac clients:
@@ -233,10 +233,37 @@ For Mac clients:
 Download the .dmg file from GitHub Releases.
 ```
 
-Install the same app on both the main/server computer and cashier/client computers. The difference is selected on first run:
+Install or run the same app on both the main/server computer and cashier/client computers. The difference is selected on first run:
 
 - Main/admin computer: choose **Server / Main Computer**.
 - Cashier computer: choose **Client / Cashier Computer** and enter the server API URL.
+
+### Windows Portable EXE
+
+The Windows release is currently delivered as a portable EXE. It does not need a normal installer.
+
+1. Download:
+
+```text
+POS-System-1.0.0-win-x64-portable.exe
+```
+
+2. Create a folder:
+
+```text
+C:\POS-System\
+```
+
+3. Put the portable EXE inside that folder.
+4. Right-click the EXE and choose **Create shortcut**.
+5. Move the shortcut to the Desktop.
+6. Open the app from the shortcut.
+7. On the main/admin PC, choose **Server / Main Computer**.
+8. On cashier PCs, choose **Client / Cashier Computer**.
+
+Do not delete the `C:\POS-System\` folder after setup.
+
+The portable EXE may not create Start Menu shortcuts automatically. POS data is still saved in the app user-data folder and server database location, not only inside the EXE file. The main/server PC must still stay turned on for cashier computers to login and create sales.
 
 ### Code Signing Note
 

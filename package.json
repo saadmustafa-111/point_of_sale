@@ -112,7 +112,10 @@
       "category": "public.app-category.business"
     },
     "win": {
-      "target": "nsis"
+      "target": [
+        "portable"
+      ],
+      "artifactName": "POS-System-${version}-win-x64-portable.${ext}"
     },
     "linux": {
       "target": "AppImage"
