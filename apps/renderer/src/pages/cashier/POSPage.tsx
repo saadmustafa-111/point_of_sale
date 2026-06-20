@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { productsService, customersService, salesService, categoriesService, settingsService, installmentsService } from '../../services';
 import {
@@ -35,20 +35,105 @@ const PAYMENT_METHODS = [
 
 // ─── Invoice Print Modal ──────────────────────────────────────────────────────
 
+type ReceiptFormat = 'thermal_58' | 'thermal_80' | 'a4';
+
+function normalizeReceiptFormat(value?: string): ReceiptFormat {
+  if (value === 'thermal_58') return 'thermal_58';
+  if (value === 'a4') return 'a4';
+  return 'thermal_80';
+}
+
+function generateA4InvoiceHTML(sale: any, settings: any) {
+  const shopName = settings?.pos_name || settings?.shop_name || 'Home Appliances POS';
+  const shopAddress = settings?.shop_address || '';
+  const shopPhone = settings?.shop_phone || '';
+  const footer = settings?.receipt_footer || 'Thank you for your purchase!';
+  const fmt = (n: number) => `PKR ${Number(n || 0).toLocaleString('en-PK', { minimumFractionDigits: 0 })}`;
+  const rows = sale.items?.map((item: any, idx: number) => `
+    <tr>
+      <td>${idx + 1}</td>
+      <td>
+        <strong>${item.product?.name || ''}</strong><br />
+        <small>SKU: ${item.product?.sku || ''}${item.serialNumber ? ` | S/N: ${item.serialNumber}` : ''}</small>
+      </td>
+      <td>${item.quantity}</td>
+      <td>${fmt(item.unitPrice)}</td>
+      <td>${item.discount > 0 ? fmt(item.discount) : '-'}</td>
+      <td><strong>${fmt(item.total)}</strong></td>
+    </tr>
+  `).join('') || '';
+
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Invoice ${sale.invoiceNumber}</title>
+    <style>
+      *{box-sizing:border-box}body{font-family:'Segoe UI',Arial,sans-serif;font-size:12px;color:#111;background:#fff;padding:24px}
+      .header{text-align:center;border-bottom:2px solid #2563eb;padding-bottom:14px;margin-bottom:18px}
+      .header h1{font-size:24px;color:#2563eb;margin:0 0 4px;font-weight:700}
+      .muted{color:#555;font-size:11px}.meta{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+      table{width:100%;border-collapse:collapse;margin-bottom:16px}th{background:#2563eb;color:#fff;text-align:left;padding:8px;font-size:11px}
+      td{border-bottom:1px solid #e5e7eb;padding:8px;vertical-align:top}tr:nth-child(even) td{background:#f9fafb}
+      .totals{margin-left:auto;width:280px}.totals div{display:flex;justify-content:space-between;padding:4px 0}
+      .grand{font-size:16px;font-weight:700;color:#2563eb;border-top:2px solid #2563eb;margin-top:4px;padding-top:8px!important}
+      .footer{text-align:center;margin-top:24px;border-top:1px dashed #bbb;padding-top:14px;color:#666}
+      @page{size:A4;margin:12mm}@media print{body{padding:0}}
+    </style></head><body>
+      <div class="header">
+        <h1>${shopName}</h1>
+        ${shopAddress ? `<div class="muted">${shopAddress}</div>` : ''}
+        ${shopPhone ? `<div class="muted">Tel: ${shopPhone}</div>` : ''}
+      </div>
+      <div class="meta">
+        <div>
+          <div><strong>Invoice:</strong> ${sale.invoiceNumber}</div>
+          <div><strong>Date:</strong> ${new Date(sale.createdAt).toLocaleString('en-PK')}</div>
+          <div><strong>Cashier:</strong> ${sale.cashier?.fullName || ''}</div>
+        </div>
+        <div>
+          <div><strong>Customer:</strong> ${sale.customer?.name || 'Walk-in Customer'}</div>
+          ${sale.customer?.phone ? `<div><strong>Phone:</strong> ${sale.customer.phone}</div>` : ''}
+          <div><strong>Payment:</strong> ${sale.paymentMethod?.replace('_', ' ') || ''}</div>
+        </div>
+      </div>
+      <table>
+        <thead><tr><th>#</th><th>Item</th><th>Qty</th><th>Unit</th><th>Disc.</th><th>Total</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div class="totals">
+        <div><span>Subtotal</span><span>${fmt(sale.subtotal)}</span></div>
+        ${sale.discount > 0 ? `<div><span>Discount</span><span>- ${fmt(sale.discount)}</span></div>` : ''}
+        ${sale.taxAmount > 0 ? `<div><span>Tax (${sale.tax}%)</span><span>${fmt(sale.taxAmount)}</span></div>` : ''}
+        <div class="grand"><span>Total</span><span>${fmt(sale.total)}</span></div>
+        ${sale.paymentMethod === 'CASH' ? `<div><span>Paid</span><span>${fmt(sale.amountPaid)}</span></div><div><span>Change</span><span>${fmt(sale.changeGiven)}</span></div>` : ''}
+      </div>
+      <div class="footer">${footer}</div>
+    </body></html>`;
+}
+
 function InvoiceModal({ sale, settings, installmentPlan, onClose }: { sale: any; settings: any; installmentPlan?: any; onClose: () => void }) {
-  const [printFormat, setPrintFormat] = useState<'thermal' | 'a4'>(settings?.receipt_format || 'thermal');
+  const [printFormat, setPrintFormat] = useState<ReceiptFormat>(normalizeReceiptFormat(settings?.receipt_format));
   const fmt = (n: number) => `PKR ${n.toLocaleString('en-PK', { minimumFractionDigits: 0 })}`;
-  const shopName    = settings?.shop_name    || 'Home Appliances Shop';
+  const shopName    = settings?.pos_name || settings?.shop_name || 'Home Appliances POS';
   const shopAddress = settings?.shop_address || '';
   const shopPhone   = settings?.shop_phone   || '';
   const footer      = settings?.receipt_footer || 'Thank you for your purchase!';
 
-  const handlePrintThermal = () => {
-    const html = generateThermalReceiptHTML(sale, settings);
-    const w = window as any;
-    if (w.electron?.printReceipt) {
-      w.electron.printReceipt(html);
-      toast.success('Printing thermal receipt...');
+  const handlePrintThermal = (format: 'thermal_58' | 'thermal_80') => {
+    const html = generateThermalReceiptHTML(sale, settings, format === 'thermal_58' ? '58mm' : '80mm');
+    const api = window.electronAPI || window.electron;
+    if (api?.printReceipt) {
+      api.printReceipt({
+        html,
+        width: format === 'thermal_58' ? '58mm' : '80mm',
+        copies: 1,
+      }).then((result) => {
+        if (result.success) toast.success(`Printing ${format === 'thermal_58' ? '58mm' : '80mm'} receipt...`);
+        else {
+          console.error('[Print] Manual thermal print failed:', result.error || result.reason);
+          toast.error('Receipt could not be printed. Please check printer settings and try Print Test Page.');
+        }
+      }).catch((err) => {
+        console.error('[Print] Manual thermal print failed:', err);
+        toast.error('Receipt could not be printed. Please check printer settings and try Print Test Page.');
+      });
     } else {
       const win = window.open('', '_blank', 'width=400,height=800');
       if (!win) { alert('Print blocked. Please allow popups.'); return; }
@@ -58,34 +143,22 @@ function InvoiceModal({ sale, settings, installmentPlan, onClose }: { sale: any;
   };
 
   const handlePrintA4 = () => {
-    const printContent = document.getElementById('invoice-content')!.innerHTML;
-    const html = `<!DOCTYPE html><html><head><title>Invoice ${sale.invoiceNumber}</title>
-      <style>
-        * { margin:0; padding:0; box-sizing:border-box; }
-        body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; color: #111; background: #fff; padding: 20px; }
-        .header { text-align: center; border-bottom: 2px solid #2563eb; padding-bottom: 12px; margin-bottom: 16px; }
-        .header h1 { font-size: 22px; color: #2563eb; font-weight: 700; }
-        .header p  { font-size: 11px; color: #555; margin-top: 2px; }
-        .meta { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
-        .meta-box label { font-size: 10px; text-transform: uppercase; color: #888; }
-        .meta-box p { font-size: 12px; font-weight: 600; margin-top: 2px; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
-        th { background: #2563eb; color: #fff; font-size: 11px; padding: 6px 8px; text-align: left; }
-        td { border-bottom: 1px solid #e5e7eb; padding: 6px 8px; font-size: 11px; }
-        tr:nth-child(even) td { background: #f9fafb; }
-        .totals { margin-left: auto; width: 260px; }
-        .totals tr td:first-child { color: #555; }
-        .totals tr td:last-child { text-align: right; font-weight: 600; }
-        .totals .grand td { font-size: 14px; font-weight: 700; color: #2563eb; border-top: 2px solid #2563eb; }
-        .warranty-badge { font-size: 10px; color: #059669; background: #d1fae5; border-radius: 3px; padding: 1px 4px; margin-left: 4px; }
-        .footer { text-align: center; margin-top: 20px; border-top: 1px dashed #ccc; padding-top: 12px; color: #777; font-size: 11px; }
-        .payment-row { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 12px; }
-        .serial { font-size: 10px; color: #666; }
-        @media print { button { display:none; } }
-      </style></head><body>${printContent}</body></html>`;
-    const w = window as any;
-    if (w.electron?.printReceipt) {
-      w.electron.printReceipt(html);
+    const html = generateA4InvoiceHTML(sale, settings);
+    const api = window.electronAPI || window.electron;
+    if (api?.printReceipt) {
+      api.printReceipt({
+        html,
+        width: 'a4',
+        copies: 1,
+      }).then((result) => {
+        if (!result.success) {
+          console.error('[Print] Manual A4 print failed:', result.error || result.reason);
+          toast.error('Receipt could not be printed. Please check printer settings and try Print Test Page.');
+        }
+      }).catch((err) => {
+        console.error('[Print] Manual A4 print failed:', err);
+        toast.error('Receipt could not be printed. Please check printer settings and try Print Test Page.');
+      });
     } else {
       const win = window.open('', '_blank', 'width=800,height=900');
       if (!win) { alert('Print blocked. Please allow popups.'); return; }
@@ -261,14 +334,24 @@ function InvoiceModal({ sale, settings, installmentPlan, onClose }: { sale: any;
           {/* Print Format Toggle */}
           <div className="flex gap-2 p-2 bg-slate-100 rounded-lg">
             <button
-              onClick={() => setPrintFormat('thermal')}
+              onClick={() => setPrintFormat('thermal_80')}
               className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
-                printFormat === 'thermal'
+                printFormat === 'thermal_80'
                   ? 'bg-blue-600 text-white'
                   : 'bg-white text-slate-600 hover:bg-slate-50'
               }`}
             >
-              <Receipt className="w-4 h-4" /> Thermal Receipt (80mm)
+              <Receipt className="w-4 h-4" /> 80mm
+            </button>
+            <button
+              onClick={() => setPrintFormat('thermal_58')}
+              className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
+                printFormat === 'thermal_58'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              <Receipt className="w-4 h-4" /> 58mm
             </button>
             <button
               onClick={() => setPrintFormat('a4')}
@@ -285,11 +368,11 @@ function InvoiceModal({ sale, settings, installmentPlan, onClose }: { sale: any;
           {/* Print and New Sale Buttons */}
           <div className="flex gap-3">
             <button
-              onClick={printFormat === 'thermal' ? handlePrintThermal : handlePrintA4}
+              onClick={() => printFormat === 'a4' ? handlePrintA4() : handlePrintThermal(printFormat)}
               className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg border border-blue-600 text-blue-600 font-medium hover:bg-blue-50 transition-colors"
             >
-              {printFormat === 'thermal' ? <Receipt className="w-4 h-4" /> : <Printer className="w-4 h-4" />}
-              Print {printFormat === 'thermal' ? 'Receipt' : 'Invoice'}
+              {printFormat === 'a4' ? <Printer className="w-4 h-4" /> : <Receipt className="w-4 h-4" />}
+              Print {printFormat === 'a4' ? 'Invoice' : 'Receipt'}
             </button>
             <button
               onClick={onClose}
@@ -514,9 +597,15 @@ export default function POSPage() {
   const [lastSale, setLastSale]           = useState<any>(null);
   const [showInstallmentModal, setShowInstallmentModal] = useState(false);
   const [lastInstallmentPlan, setLastInstallmentPlan] = useState<any>(null);
+  const [printerSettings, setPrinterSettings] = useState({ defaultPrinter: '', silentPrint: false, autoPrint: false });
 
   // Ref to capture paymentMethod at the moment of checkout (avoids stale closure)
   const paymentMethodRef = useRef<string>('CASH');
+
+  useEffect(() => {
+    const api = window.electronAPI || window.electron;
+    api?.getPrinterSettings().then(setPrinterSettings).catch(() => undefined);
+  }, []);
 
   // Queries
   const { data: categories = [] } = useQuery({ queryKey: ['categories'], queryFn: categoriesService.getAll });
@@ -549,6 +638,31 @@ export default function POSPage() {
   const paidNum     = +parseFloat(amountPaid || '0').toFixed(2);
   const change      = +Math.max(0, paidNum - total).toFixed(2);
 
+  const printSale = async (sale: any) => {
+    const format = normalizeReceiptFormat(settings.receipt_format);
+    const html = format === 'a4'
+      ? generateA4InvoiceHTML(sale, settings)
+      : generateThermalReceiptHTML(sale, settings, format === 'thermal_58' ? '58mm' : '80mm');
+
+    const api = window.electronAPI || window.electron;
+    if (api?.printReceipt) {
+      const result = await api.printReceipt({
+        html,
+        silent: printerSettings.silentPrint,
+        printerName: printerSettings.defaultPrinter || undefined,
+        width: format === 'a4' ? 'a4' : format === 'thermal_58' ? '58mm' : '80mm',
+        copies: 1,
+      });
+      if (!result?.success) throw new Error(result?.error || result?.reason || 'Print failed');
+      return;
+    }
+
+    const win = window.open('', '_blank', format === 'a4' ? 'width=800,height=900' : 'width=400,height=800');
+    if (!win) throw new Error('Print blocked. Please allow popups.');
+    win.document.write(html);
+    win.document.close(); win.focus(); win.print(); win.close();
+  };
+
   // Mutations
   const saleMut = useMutation({
     mutationFn: salesService.create,
@@ -559,6 +673,14 @@ export default function POSPage() {
       setAmountPaid('');
       qc.invalidateQueries({ queryKey: ['products'] });
       toast.success(`Invoice ${data.invoiceNumber} created!`);
+      if (printerSettings.autoPrint) {
+        printSale(data)
+          .then(() => toast.success('Receipt sent to printer'))
+          .catch((err) => {
+            console.error('[Print] Auto print failed:', err);
+            toast.error('Receipt could not be printed. Please check printer settings and try Print Test Page.');
+          });
+      }
       // Use ref to reliably read paymentMethod at time of checkout
       if (paymentMethodRef.current === 'INSTALLMENT') {
         setShowInstallmentModal(true);

@@ -50,6 +50,7 @@ let SettingsController = class SettingsController {
     constructor(service) {
         this.service = service;
     }
+    publicBranding() { return this.service.getPublicBranding(); }
     all() { return this.service.getAll(); }
     one(key) { return this.service.get(key); }
     set(key, dto) {
@@ -59,12 +60,22 @@ let SettingsController = class SettingsController {
 };
 exports.SettingsController = SettingsController;
 __decorate([
+    (0, common_1.Get)('public/branding'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], SettingsController.prototype, "publicBranding", null);
+__decorate([
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, roles_decorator_1.Roles)(enums_1.Role.ADMIN),
     (0, common_1.Get)(),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
 ], SettingsController.prototype, "all", null);
 __decorate([
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, roles_decorator_1.Roles)(enums_1.Role.ADMIN),
     (0, common_1.Get)(':key'),
     __param(0, (0, common_1.Param)('key')),
     __metadata("design:type", Function),
@@ -72,6 +83,8 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], SettingsController.prototype, "one", null);
 __decorate([
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, roles_decorator_1.Roles)(enums_1.Role.ADMIN),
     (0, common_1.Put)(':key'),
     __param(0, (0, common_1.Param)('key')),
     __param(1, (0, common_1.Body)()),
@@ -80,6 +93,8 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], SettingsController.prototype, "set", null);
 __decorate([
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, roles_decorator_1.Roles)(enums_1.Role.ADMIN),
     (0, common_1.Put)(),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
@@ -89,8 +104,6 @@ __decorate([
 exports.SettingsController = SettingsController = __decorate([
     (0, swagger_1.ApiTags)('Settings'),
     (0, swagger_1.ApiBearerAuth)(),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
-    (0, roles_decorator_1.Roles)(enums_1.Role.ADMIN),
     (0, common_1.Controller)('settings'),
     __metadata("design:paramtypes", [settings_service_1.SettingsService])
 ], SettingsController);

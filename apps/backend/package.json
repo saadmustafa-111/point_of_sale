@@ -4,7 +4,7 @@
   "description": "NestJS Backend for POS System",
   "private": true,
   "scripts": {
-    "build": "rm -f tsconfig.tsbuildinfo && tsc --project tsconfig.json",
+    "build": "node -e \"require('fs').rmSync('tsconfig.tsbuildinfo',{force:true})\" && tsc --project tsconfig.json",
     "start": "node dist/main.js",
     "start:dev": "ts-node --project tsconfig.json src/main.ts",
     "start:debug": "nest start --debug --watch",

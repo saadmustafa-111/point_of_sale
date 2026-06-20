@@ -202,75 +202,38 @@ export default function ReturnsPage() {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Returns & Exchanges</h1>
-            <p className="text-gray-600 mt-1">Manage product returns and exchange requests</p>
-          </div>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="btn-primary"
-          >
-            <Plus className="w-4 h-4" />
-            Create Return
-          </button>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800">Returns &amp; Exchanges</h1>
+          <p className="text-sm text-slate-500 mt-0.5">Manage product returns and exchange requests</p>
         </div>
-        <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-          <p className="text-sm text-blue-800">
-            💡 <strong>Tip:</strong> Select a previous sale and create a return request. Returns require admin approval before processing.
-          </p>
-        </div>
+        <button onClick={() => setShowCreateModal(true)} className="btn-primary flex items-center gap-2 px-5 py-2.5 text-sm font-semibold shadow-md">
+          <Plus className="w-4 h-4" />Create Return
+        </button>
+      </div>
+      <div className="flex items-start gap-2 p-3.5 bg-blue-50 border border-blue-200 rounded-xl text-sm text-blue-800">
+        <span>💡</span><span><strong>Tip:</strong> Select a previous sale and create a return request. Returns require admin approval before processing.</span>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white p-4 rounded-lg shadow-sm border">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Total Returns</p>
-              <p className="text-2xl font-bold text-gray-900">{returns.length}</p>
-            </div>
-            <RefreshCw className="w-8 h-8 text-blue-500" />
-          </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-white rounded-2xl border border-slate-200 p-4 flex items-center gap-3 shadow-sm">
+          <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center"><RefreshCw className="w-5 h-5 text-blue-600" /></div>
+          <div><p className="text-xs text-slate-500 font-medium">Total Returns</p><p className="text-2xl font-bold text-slate-800">{returns.length}</p></div>
         </div>
-
-        <div className="bg-white p-4 rounded-lg shadow-sm border">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Pending Review</p>
-              <p className="text-2xl font-bold text-yellow-600">
-                {returns.filter((r: any) => r.status === 'PENDING').length}
-              </p>
-            </div>
-            <Clock className="w-8 h-8 text-yellow-500" />
-          </div>
+        <div className="bg-white rounded-2xl border border-slate-200 p-4 flex items-center gap-3 shadow-sm">
+          <div className="w-10 h-10 rounded-xl bg-yellow-50 flex items-center justify-center"><Clock className="w-5 h-5 text-yellow-600" /></div>
+          <div><p className="text-xs text-slate-500 font-medium">Pending Review</p><p className="text-2xl font-bold text-yellow-600">{returns.filter((r: any) => r.status === 'PENDING').length}</p></div>
         </div>
-
-        <div className="bg-white p-4 rounded-lg shadow-sm border">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Approved</p>
-              <p className="text-2xl font-bold text-blue-600">
-                {returns.filter((r: any) => r.status === 'APPROVED').length}
-              </p>
-            </div>
-            <CheckCircle className="w-8 h-8 text-blue-500" />
-          </div>
+        <div className="bg-white rounded-2xl border border-slate-200 p-4 flex items-center gap-3 shadow-sm">
+          <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center"><CheckCircle className="w-5 h-5 text-emerald-600" /></div>
+          <div><p className="text-xs text-slate-500 font-medium">Approved</p><p className="text-2xl font-bold text-emerald-600">{returns.filter((r: any) => r.status === 'APPROVED').length}</p></div>
         </div>
-
-        <div className="bg-white p-4 rounded-lg shadow-sm border">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Completed</p>
-              <p className="text-2xl font-bold text-green-600">
-                {returns.filter((r: any) => r.status === 'COMPLETED').length}
-              </p>
-            </div>
-            <CheckCircle className="w-8 h-8 text-green-500" />
-          </div>
+        <div className="bg-white rounded-2xl border border-slate-200 p-4 flex items-center gap-3 shadow-sm">
+          <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center"><CheckCircle className="w-5 h-5 text-emerald-600" /></div>
+          <div><p className="text-xs text-slate-500 font-medium">Completed</p><p className="text-2xl font-bold text-emerald-600">{returns.filter((r: any) => r.status === 'COMPLETED').length}</p></div>
         </div>
       </div>
 

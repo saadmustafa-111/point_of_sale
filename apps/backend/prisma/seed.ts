@@ -48,12 +48,14 @@ async function main() {
 
   // Settings
   const defaults = [
+    { key: 'pos_name', value: 'Home Appliances POS' },
     { key: 'shop_name', value: 'Al-Noor Home Appliances' },
     { key: 'shop_address', value: 'Main Bazaar, Lahore, Pakistan' },
     { key: 'shop_phone', value: '+92-300-0000000' },
     { key: 'currency', value: 'PKR' },
     { key: 'receipt_footer', value: 'Thank you for shopping with us!' },
     { key: 'tax_rate', value: '0' },
+    { key: 'receipt_format', value: 'thermal_80' },
   ];
   for (const s of defaults) {
     await prisma.setting.upsert({ where: { key: s.key }, update: {}, create: s });

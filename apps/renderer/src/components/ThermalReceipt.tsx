@@ -1,6 +1,6 @@
 /**
  * Professional Thermal Receipt Component
- * Optimized for 80mm (3.15 inch) thermal POS printers
+ * Optimized for 58mm and 80mm thermal POS printers
  * Standard in retail shops for home appliances and electronics
  */
 
@@ -13,7 +13,7 @@ interface ThermalReceiptProps {
 
 export function ThermalReceipt({ sale, settings }: ThermalReceiptProps) {
   const fmt = (n: number) => `Rs. ${n.toLocaleString('en-PK', { minimumFractionDigits: 0 })}`;
-  const shopName = settings?.shop_name || 'Home Appliances Shop';
+  const shopName = settings?.pos_name || settings?.shop_name || 'Home Appliances POS';
   const shopAddress = settings?.shop_address || '';
   const shopPhone = settings?.shop_phone || '';
   const footer = settings?.receipt_footer || 'Thank you for your purchase!';
@@ -190,11 +190,19 @@ export function ThermalReceipt({ sale, settings }: ThermalReceiptProps) {
 
 /**
  * Generate HTML for thermal receipt printing
- * Optimized for 80mm (302px at 96 DPI) thermal printers
+ * Optimized for 58mm and 80mm thermal printers
  */
-export function generateThermalReceiptHTML(sale: any, settings: any): string {
+export function generateThermalReceiptHTML(sale: any, settings: any, paperSize?: '58mm' | '80mm'): string {
+  const selectedPaper = paperSize || (settings?.receipt_format === 'thermal_58' ? '58mm' : '80mm');
+  const is58 = selectedPaper === '58mm';
+  const receiptWidthPx = is58 ? 219 : 302;
+  const bodyPadding = is58 ? '2mm' : '4mm';
+  const baseFont = is58 ? '10px' : '11px';
+  const smallFont = is58 ? '8px' : '9px';
+  const titleFont = is58 ? '14px' : '16px';
+  const totalFont = is58 ? '12px' : '14px';
   const fmt = (n: number) => `Rs. ${n.toLocaleString('en-PK', { minimumFractionDigits: 0 })}`;
-  const shopName = settings?.shop_name || 'Home Appliances Shop';
+  const shopName = settings?.pos_name || settings?.shop_name || 'Home Appliances POS';
   const shopAddress = settings?.shop_address || '';
   const shopPhone = settings?.shop_phone || '';
   const footer = settings?.receipt_footer || 'Thank you for your purchase!';
@@ -223,12 +231,12 @@ export function generateThermalReceiptHTML(sale: any, settings: any): string {
       : '';
 
     itemsHTML += `
-      <div style="margin-bottom: 8px; font-size: 10px;">
+      <div style="margin-bottom: ${is58 ? '6px' : '8px'}; font-size: ${is58 ? '9px' : '10px'};">
         <div style="font-weight: bold; margin-bottom: 2px;">${item.product?.name}</div>
-        <div style="font-size: 9px; color: #666; margin-bottom: 2px;">SKU: ${item.product?.sku}${item.product?.brand?.name ? ' | ' + item.product.brand.name : ''}</div>
+        <div style="font-size: ${smallFont}; color: #666; margin-bottom: 2px;">SKU: ${item.product?.sku}${item.product?.brand?.name ? ' | ' + item.product.brand.name : ''}</div>
         ${serialHTML}
         ${warrantyHTML}
-        <div style="display: flex; justify-content: space-between; font-size: 10px;">
+        <div style="display: flex; justify-content: space-between; gap: 4px; font-size: ${is58 ? '9px' : '10px'};">
           <span>${item.quantity} x ${fmt(item.unitPrice)}</span>
           ${discountHTML}
           <span style="font-weight: bold;">${fmt(item.total)}</span>
@@ -308,7 +316,7 @@ export function generateThermalReceiptHTML(sale: any, settings: any): string {
   <title>Receipt ${sale.invoiceNumber}</title>
   <style>
     @page { 
-      size: 80mm auto; 
+      size: ${selectedPaper} auto; 
       margin: 0mm;
     }
     * { 
@@ -317,10 +325,10 @@ export function generateThermalReceiptHTML(sale: any, settings: any): string {
       box-sizing: border-box; 
     }
     body { 
-      width: 80mm;
+      width: ${selectedPaper};
       font-family: 'Courier New', monospace;
-      font-size: 11px;
-      padding: 4mm;
+      font-size: ${baseFont};
+      padding: ${bodyPadding};
       background: #fff;
       color: #000;
     }
@@ -331,17 +339,17 @@ export function generateThermalReceiptHTML(sale: any, settings: any): string {
   </style>
 </head>
 <body>
-  <div style="width: 302px; font-family: monospace; font-size: 11px; padding: 8px; background-color: #fff;">
+  <div style="width: ${receiptWidthPx}px; font-family: monospace; font-size: ${baseFont}; padding: ${is58 ? '4px' : '8px'}; background-color: #fff;">
     <!-- Header -->
     <div style="text-align: center; border-bottom: 2px dashed #000; padding-bottom: 8px; margin-bottom: 8px;">
-      <div style="font-size: 16px; font-weight: bold; margin-bottom: 2px;">${shopName}</div>
-      ${shopAddress ? `<div style="font-size: 9px; margin-bottom: 1px;">${shopAddress}</div>` : ''}
-      ${shopPhone ? `<div style="font-size: 9px; margin-bottom: 1px;">Tel: ${shopPhone}</div>` : ''}
-      ${taxId ? `<div style="font-size: 9px;">Tax ID: ${taxId}</div>` : ''}
+      <div style="font-size: ${titleFont}; font-weight: bold; margin-bottom: 2px;">${shopName}</div>
+      ${shopAddress ? `<div style="font-size: ${smallFont}; margin-bottom: 1px;">${shopAddress}</div>` : ''}
+      ${shopPhone ? `<div style="font-size: ${smallFont}; margin-bottom: 1px;">Tel: ${shopPhone}</div>` : ''}
+      ${taxId ? `<div style="font-size: ${smallFont};">Tax ID: ${taxId}</div>` : ''}
     </div>
 
     <!-- Invoice Info -->
-    <div style="margin-bottom: 6px; font-size: 10px;">
+    <div style="margin-bottom: 6px; font-size: ${is58 ? '9px' : '10px'};">
       <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
         <span style="font-weight: bold;">Invoice:</span>
         <span>${sale.invoiceNumber}</span>
@@ -363,21 +371,21 @@ export function generateThermalReceiptHTML(sale: any, settings: any): string {
     </div>
 
     <!-- Totals -->
-    <div style="margin-bottom: 8px; font-size: 10px;">
+    <div style="margin-bottom: 8px; font-size: ${is58 ? '9px' : '10px'};">
       <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
         <span>Subtotal:</span>
         <span>${fmt(sale.subtotal)}</span>
       </div>
       ${discountRowHTML}
       ${taxRowHTML}
-      <div style="border-top: 2px solid #000; padding-top: 4px; margin-top: 4px; display: flex; justify-content: space-between; font-size: 14px; font-weight: bold;">
+      <div style="border-top: 2px solid #000; padding-top: 4px; margin-top: 4px; display: flex; justify-content: space-between; font-size: ${totalFont}; font-weight: bold;">
         <span>TOTAL:</span>
         <span>${fmt(sale.total)}</span>
       </div>
     </div>
 
     <!-- Payment Details -->
-    <div style="margin-bottom: 8px; font-size: 10px; border-top: 1px dashed #000; padding-top: 6px;">
+    <div style="margin-bottom: 8px; font-size: ${is58 ? '9px' : '10px'}; border-top: 1px dashed #000; padding-top: 6px;">
       <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
         <span>Payment Method:</span>
         <span style="font-weight: bold;">${sale.paymentMethod?.replace('_', ' ')}</span>

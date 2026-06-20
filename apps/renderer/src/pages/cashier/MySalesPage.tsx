@@ -32,9 +32,17 @@ function InvoiceDetailModal({ sale, settings, onClose }: { sale: any; settings: 
         .footer{text-align:center;margin-top:20px;border-top:1px dashed #ccc;padding-top:12px;color:#777;font-size:11px}
         @media print{button{display:none}}
       </style></head><body>${content}</body></html>`;
-    const w = window as any;
-    if (w.electron?.printReceipt) {
-      w.electron.printReceipt(html);
+    const api = window.electronAPI || window.electron;
+    if (api?.printReceipt) {
+      api.printReceipt({ html, width: 'a4', copies: 1 }).then((result) => {
+        if (!result.success) {
+          console.error('[Print] My sales invoice print failed:', result.error || result.reason);
+          alert('Receipt could not be printed. Please check printer settings and try Print Test Page.');
+        }
+      }).catch((err) => {
+        console.error('[Print] My sales invoice print failed:', err);
+        alert('Receipt could not be printed. Please check printer settings and try Print Test Page.');
+      });
     } else {
       const win = window.open('', '_blank', 'width=800,height=900');
       if (!win) { alert('Print blocked. Please allow popups.'); return; }
@@ -240,4 +248,3 @@ export default function MySalesPage() {
     </div>
   );
 }
-

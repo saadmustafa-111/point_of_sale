@@ -1,12 +1,21 @@
 import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
 
-// In Electron production: use the API URL from the main process
-// In dev: Vite proxy forwards /api → localhost:3000
-const BASE_URL = '/api/v1';
+const DEFAULT_DEV_API_URL = '/api/v1';
+
+let currentApiUrl = DEFAULT_DEV_API_URL;
+
+export function setApiBaseUrl(apiUrl: string) {
+  currentApiUrl = apiUrl || DEFAULT_DEV_API_URL;
+  api.defaults.baseURL = currentApiUrl;
+}
+
+export function getApiBaseUrl() {
+  return currentApiUrl;
+}
 
 const api = axios.create({
-  baseURL: BASE_URL,
+  baseURL: currentApiUrl,
   headers: { 'Content-Type': 'application/json' },
   timeout: 15_000,
 });

@@ -17,6 +17,19 @@ let SettingsService = class SettingsService {
         this.prisma = prisma;
     }
     async getAll() { return this.prisma.setting.findMany(); }
+    async getPublicBranding() {
+        const settings = await this.prisma.setting.findMany({
+            where: { key: { in: ['pos_name', 'shop_name', 'shop_address', 'shop_phone', 'currency'] } },
+        });
+        const map = Object.fromEntries(settings.map((s) => [s.key, s.value]));
+        return {
+            posName: map.pos_name || map.shop_name || 'Home Appliances POS',
+            shopName: map.shop_name || map.pos_name || 'Home Appliances POS',
+            shopAddress: map.shop_address || '',
+            shopPhone: map.shop_phone || '',
+            currency: map.currency || 'PKR',
+        };
+    }
     async get(key) { return this.prisma.setting.findUnique({ where: { key } }); }
     async upsert(key, value) {
         return this.prisma.setting.upsert({

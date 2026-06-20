@@ -7,6 +7,11 @@ export const authService = {
   getProfile: () => api.get('/auth/profile').then((r) => r.data),
 };
 
+export const setupService = {
+  status: () => api.get('/setup/status').then((r) => r.data),
+  createFirstAdmin: (data: any) => api.post('/setup/first-admin', data).then((r) => r.data),
+};
+
 export const usersService = {
   getAll: ()                    => api.get('/users').then((r) => r.data),
   getOne: (id: string)          => api.get(`/users/${id}`).then((r) => r.data),
@@ -69,6 +74,7 @@ export const reportsService = {
 
 export const settingsService = {
   getAll: ()                             => api.get('/settings').then((r) => r.data),
+  getPublicBranding: ()                  => api.get('/settings/public/branding').then((r) => r.data),
   set: (key: string, value: string)      => api.put(`/settings/${key}`, { value }).then((r) => r.data),
   bulk: (entries: {key:string;value:string}[]) => api.put('/settings', { entries }).then((r) => r.data),
 };

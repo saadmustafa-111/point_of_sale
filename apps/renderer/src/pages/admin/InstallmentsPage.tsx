@@ -340,47 +340,40 @@ export default function InstallmentsPage() {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="mb-6 flex items-center justify-between flex-wrap gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Installment Plans</h1>
-          <p className="text-gray-500 mt-1">Track monthly payments from customers buying on credit</p>
+          <h1 className="text-2xl font-bold text-slate-800">Installment Plans</h1>
+          <p className="text-sm text-slate-500 mt-0.5">Track monthly payments from customers buying on credit</p>
         </div>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="btn-primary"
-        >
-          <Plus className="w-4 h-4" /> New Plan
+        <button onClick={() => setShowCreateModal(true)} className="btn-primary flex items-center gap-2 px-5 py-2.5 text-sm font-semibold shadow-md">
+          <Plus className="w-4 h-4" />New Plan
         </button>
       </div>
 
       {/* Tip */}
-      <div className="mb-5 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
-        💡 <strong>Tip:</strong> Plans are auto-created when cashier selects "Installment" at POS checkout. You can also create one manually here using "New Plan".
+      <div className="flex items-start gap-2 p-3.5 bg-blue-50 border border-blue-200 rounded-xl text-sm text-blue-800">
+        <span>💡</span><span><strong>Tip:</strong> Plans are auto-created when cashier selects "Installment" at POS checkout. You can also create one manually here using "New Plan".</span>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white p-4 rounded-lg border">
-          <p className="text-xs text-gray-500">Total Plans</p>
-          <p className="text-2xl font-bold text-gray-900">{plans.length}</p>
-          <CreditCard className="w-5 h-5 text-blue-400 mt-1" />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-white rounded-2xl border border-slate-200 p-4 flex items-center gap-3 shadow-sm">
+          <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center"><CreditCard className="w-5 h-5 text-blue-600" /></div>
+          <div><p className="text-xs text-slate-500 font-medium">Total Plans</p><p className="text-2xl font-bold text-slate-800">{plans.length}</p></div>
         </div>
-        <div className="bg-white p-4 rounded-lg border">
-          <p className="text-xs text-gray-500">Active</p>
-          <p className="text-2xl font-bold text-blue-600">{(plans as any[]).filter((p: any) => p.status === 'ACTIVE').length}</p>
-          <Clock className="w-5 h-5 text-blue-400 mt-1" />
+        <div className="bg-white rounded-2xl border border-slate-200 p-4 flex items-center gap-3 shadow-sm">
+          <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center"><Clock className="w-5 h-5 text-indigo-600" /></div>
+          <div><p className="text-xs text-slate-500 font-medium">Active</p><p className="text-2xl font-bold text-indigo-600">{(plans as any[]).filter((p: any) => p.status === 'ACTIVE').length}</p></div>
         </div>
-        <div className="bg-white p-4 rounded-lg border">
-          <p className="text-xs text-gray-500">Overdue Payments</p>
-          <p className="text-2xl font-bold text-red-600">{overdue.length}</p>
-          <AlertCircle className="w-5 h-5 text-red-400 mt-1" />
+        <div className="bg-white rounded-2xl border border-slate-200 p-4 flex items-center gap-3 shadow-sm">
+          <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center"><AlertCircle className="w-5 h-5 text-red-600" /></div>
+          <div><p className="text-xs text-slate-500 font-medium">Overdue Payments</p><p className="text-2xl font-bold text-red-600">{overdue.length}</p></div>
         </div>
-        <div className="bg-white p-4 rounded-lg border">
-          <p className="text-xs text-gray-500">Completed</p>
-          <p className="text-2xl font-bold text-green-600">{(plans as any[]).filter((p: any) => p.status === 'COMPLETED').length}</p>
-          <CheckCircle className="w-5 h-5 text-green-400 mt-1" />
+        <div className="bg-white rounded-2xl border border-slate-200 p-4 flex items-center gap-3 shadow-sm">
+          <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center"><CheckCircle className="w-5 h-5 text-emerald-600" /></div>
+          <div><p className="text-xs text-slate-500 font-medium">Completed</p><p className="text-2xl font-bold text-emerald-600">{(plans as any[]).filter((p: any) => p.status === 'COMPLETED').length}</p></div>
         </div>
       </div>
 

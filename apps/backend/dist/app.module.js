@@ -23,6 +23,10 @@ const settings_module_1 = require("./settings/settings.module");
 const installments_module_1 = require("./installments/installments.module");
 const returns_module_1 = require("./returns/returns.module");
 const service_module_1 = require("./service/service.module");
+const suppliers_module_1 = require("./suppliers/suppliers.module");
+const purchases_module_1 = require("./purchases/purchases.module");
+const health_module_1 = require("./health/health.module");
+const setup_module_1 = require("./setup/setup.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -30,6 +34,8 @@ exports.AppModule = AppModule = __decorate([
     (0, common_1.Module)({
         imports: [
             config_1.ConfigModule.forRoot({ isGlobal: true }),
+            health_module_1.HealthModule,
+            setup_module_1.SetupModule,
             prisma_module_1.PrismaModule,
             auth_module_1.AuthModule,
             users_module_1.UsersModule,
@@ -44,6 +50,8 @@ exports.AppModule = AppModule = __decorate([
             installments_module_1.InstallmentsModule,
             returns_module_1.ReturnsModule,
             service_module_1.ServiceModule,
+            suppliers_module_1.SuppliersModule,
+            purchases_module_1.PurchasesModule,
         ],
     })
 ], AppModule);

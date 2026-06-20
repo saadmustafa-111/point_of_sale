@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { productsService, categoriesService, brandsService } from '../../services';
-import { Plus, Search, Pencil, Trash2, X } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, X, Package, CheckCircle, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const EMPTY = { name:'', sku:'', barcode:'', categoryId:'', brandId:'', purchasePrice:'',
@@ -41,64 +41,107 @@ export default function ProductsPage() {
     else updateMut.mutate({ id: editId, d: payload });
   };
 
+  const allProducts = products as any[];
+  const activeCount   = allProducts.filter(p => p.isActive).length;
+  const lowStockCount = allProducts.filter(p => p.stock <= p.lowStockLimit).length;
+
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-bold text-slate-800">Products</h1>
-        <button className="btn-primary" onClick={openCreate}><Plus className="w-4 h-4" />Add Product</button>
+    <div className="p-6 space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800">Products</h1>
+          <p className="text-sm text-slate-500 mt-0.5">Manage your product catalogue</p>
+        </div>
+        <button className="btn-primary flex items-center gap-2 px-5 py-2.5 text-sm font-semibold shadow-md" onClick={openCreate}>
+          <Plus className="w-4 h-4" />Add Product
+        </button>
       </div>
 
-      <div className="card mb-4 flex items-center gap-2">
-        <Search className="w-4 h-4 text-slate-500" />
-        <input className="flex-1 bg-transparent text-sm text-slate-800 placeholder-slate-400 outline-none"
-          placeholder="Search by name, SKU, barcode…" value={search} onChange={e=>setSearch(e.target.value)} />
+      {/* Stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+        <div className="bg-white rounded-2xl border border-slate-200 p-4 flex items-center gap-3 shadow-sm">
+          <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center"><Package className="w-5 h-5 text-blue-600" /></div>
+          <div><p className="text-xs text-slate-500 font-medium">Total Products</p><p className="text-2xl font-bold text-slate-800">{allProducts.length}</p></div>
+        </div>
+        <div className="bg-white rounded-2xl border border-slate-200 p-4 flex items-center gap-3 shadow-sm">
+          <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center"><CheckCircle className="w-5 h-5 text-emerald-600" /></div>
+          <div><p className="text-xs text-slate-500 font-medium">Active</p><p className="text-2xl font-bold text-emerald-600">{activeCount}</p></div>
+        </div>
+        <div className="bg-white rounded-2xl border border-slate-200 p-4 flex items-center gap-3 shadow-sm col-span-2 sm:col-span-1">
+          <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center"><AlertTriangle className="w-5 h-5 text-red-500" /></div>
+          <div><p className="text-xs text-slate-500 font-medium">Low Stock</p><p className="text-2xl font-bold text-red-500">{lowStockCount}</p></div>
+        </div>
       </div>
 
-      <div className="card overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-border text-left text-slate-500">
-              {['Name','SKU','Category','Brand','Sale Price','Stock','Status',''].map(h=>(
-                <th key={h} className="pb-2 pr-4 font-medium">{h}</th>
+      {/* Table Card */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="px-5 py-4 border-b border-slate-100">
+          <div className="relative max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input className="w-full pl-9 pr-4 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+              placeholder="Search by name, SKU, barcode…" value={search} onChange={e => setSearch(e.target.value)} />
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead><tr className="bg-slate-50 border-b border-slate-100">
+              {['#', 'Product', 'SKU', 'Category', 'Brand', 'Sale Price', 'Stock', 'Status', 'Actions'].map(h => (
+                <th key={h} className={`px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider ${h === 'Actions' ? 'text-right' : 'text-left'}`}>{h}</th>
               ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {isLoading ? (
-              <tr><td colSpan={8} className="py-8 text-center text-slate-500">Loading…</td></tr>
-            ) : products.map((p: any) => (
-              <tr key={p.id} className="hover:bg-slate-50 transition-colors">
-                <td className="py-3 pr-4 text-slate-700 font-medium">{p.name}</td>
-                <td className="py-3 pr-4 text-slate-500 font-mono text-xs">{p.sku}</td>
-                <td className="py-3 pr-4 text-slate-500">{p.category?.name}</td>
-                <td className="py-3 pr-4 text-slate-500">{p.brand?.name}</td>
-                <td className="py-3 pr-4 text-slate-700">PKR {p.salePrice.toLocaleString()}</td>
-                <td className="py-3 pr-4">
-                  <span className={p.stock <= p.lowStockLimit ? 'badge-danger' : 'badge-success'}>{p.stock}</span>
-                </td>
-                <td className="py-3 pr-4">
-                  <span className={p.isActive ? 'badge-success' : 'badge-danger'}>{p.isActive ? 'Active' : 'Inactive'}</span>
-                </td>
-                <td className="py-3 flex items-center gap-2 justify-end">
-                  <button className="btn-ghost px-2 py-1" onClick={()=>openEdit(p)}><Pencil className="w-3.5 h-3.5"/></button>
-                  <button className="btn-ghost px-2 py-1 text-red-400 hover:text-red-300" onClick={()=>deleteMut.mutate(p.id)}>
-                    <Trash2 className="w-3.5 h-3.5"/>
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+            </tr></thead>
+            <tbody className="divide-y divide-slate-100">
+              {isLoading && (
+                <tr><td colSpan={9} className="text-center py-12"><div className="flex flex-col items-center gap-2 text-slate-400"><div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" /><span className="text-sm">Loading…</span></div></td></tr>
+              )}
+              {!isLoading && allProducts.length === 0 && (
+                <tr><td colSpan={9} className="text-center py-16"><div className="flex flex-col items-center gap-3"><div className="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center"><Package className="w-7 h-7 text-slate-400" /></div><p className="text-slate-500 font-medium">No products yet</p></div></td></tr>
+              )}
+              {(products as any[]).map((p: any, idx: number) => (
+                <tr key={p.id} className="hover:bg-slate-50 transition-colors group">
+                  <td className="px-5 py-3 text-slate-400 text-xs">{idx + 1}</td>
+                  <td className="px-5 py-3 font-semibold text-slate-800">{p.name}</td>
+                  <td className="px-5 py-3 text-slate-500 font-mono text-xs">{p.sku}</td>
+                  <td className="px-5 py-3 text-slate-500">{p.category?.name}</td>
+                  <td className="px-5 py-3 text-slate-500">{p.brand?.name}</td>
+                  <td className="px-5 py-3 font-semibold text-slate-700">PKR {p.salePrice.toLocaleString()}</td>
+                  <td className="px-5 py-3">
+                    <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold ${p.stock <= p.lowStockLimit ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-700'}`}>{p.stock}</span>
+                  </td>
+                  <td className="px-5 py-3">
+                    <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold ${p.isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600'}`}>{p.isActive ? 'Active' : 'Inactive'}</span>
+                  </td>
+                  <td className="px-5 py-3">
+                    <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={() => openEdit(p)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"><Pencil className="w-3.5 h-3.5" />Edit</button>
+                      <button onClick={() => deleteMut.mutate(p.id)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-500 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"><Trash2 className="w-3.5 h-3.5" />Delete</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {allProducts.length > 0 && <div className="px-5 py-3 border-t border-slate-100 bg-slate-50 text-xs text-slate-400">Showing {allProducts.length} products</div>}
       </div>
 
       {/* Modal */}
       {modal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 overflow-y-auto">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl my-4">
-            {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-              <h2 className="text-lg font-bold text-slate-800">{modal === 'create' ? '➕ Add New Product' : '✏️ Edit Product'}</h2>
-              <button className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-1.5 rounded-lg transition-colors" onClick={()=>setModal(null)}><X className="w-5 h-5"/></button>
+            <div className={`px-6 py-5 ${modal === 'create' ? 'bg-gradient-to-r from-blue-600 to-blue-500' : 'bg-gradient-to-r from-purple-600 to-purple-500'}`}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center">
+                    {modal === 'create' ? <Plus className="w-5 h-5 text-white" /> : <Pencil className="w-5 h-5 text-white" />}
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-white">{modal === 'create' ? 'Add New Product' : 'Edit Product'}</h2>
+                    <p className="text-xs text-white/70 mt-0.5">{modal === 'create' ? 'Fill in the product details below' : 'Update product information'}</p>
+                  </div>
+                </div>
+                <button className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors" onClick={() => setModal(null)}><X className="w-4 h-4" /></button>
+              </div>
             </div>
 
             <form onSubmit={submit} className="p-6 space-y-5">
@@ -191,11 +234,10 @@ export default function ProductsPage() {
                 </div>
               </div>
 
-              {/* Footer */}
               <div className="flex justify-end gap-3 pt-2 border-t border-slate-100">
-                <button type="button" className="btn-ghost px-5" onClick={()=>setModal(null)}>Cancel</button>
-                <button type="submit" className="btn-primary px-6" disabled={createMut.isPending || updateMut.isPending}>
-                  {createMut.isPending || updateMut.isPending ? 'Saving…' : modal==='create' ? 'Create Product' : 'Save Changes'}
+                <button type="button" className="px-5 py-2.5 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors" onClick={() => setModal(null)}>Cancel</button>
+                <button type="submit" className={`px-6 py-2.5 text-sm font-semibold text-white rounded-xl transition-all disabled:opacity-60 shadow-sm ${modal === 'create' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-purple-600 hover:bg-purple-700'}`} disabled={createMut.isPending || updateMut.isPending}>
+                  {createMut.isPending || updateMut.isPending ? <span className="flex items-center gap-2"><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Saving…</span> : modal === 'create' ? 'Create Product' : 'Save Changes'}
                 </button>
               </div>
             </form>

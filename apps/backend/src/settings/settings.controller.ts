@@ -24,16 +24,27 @@ class BulkUpsertDto {
 
 @ApiTags('Settings')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.ADMIN)
 @Controller('settings')
 export class SettingsController {
   constructor(private service: SettingsService) {}
 
+  @Get('public/branding') publicBranding() { return this.service.getPublicBranding(); }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @Get()                 all()                                      { return this.service.getAll(); }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @Get(':key')           one(@Param('key') key: string)             { return this.service.get(key); }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @Put(':key')           set(@Param('key') key: string, @Body() dto: UpsertSettingDto) {
     return this.service.upsert(key, dto.value);
   }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @Put()                 bulk(@Body() dto: BulkUpsertDto)           { return this.service.upsertMany(dto.entries); }
 }

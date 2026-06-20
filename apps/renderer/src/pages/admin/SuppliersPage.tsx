@@ -115,56 +115,42 @@ export default function SuppliersPage() {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Suppliers</h1>
-          <p className="text-gray-500 mt-1">Manage your company dealerships — PEL, Dawlance, Haier, etc.</p>
+          <h1 className="text-2xl font-bold text-slate-800">Suppliers</h1>
+          <p className="text-sm text-slate-500 mt-0.5">Manage your company dealerships — PEL, Dawlance, Haier, etc.</p>
         </div>
-        <button onClick={openCreate} className="btn-primary">
-          <Plus className="w-4 h-4" />
-          Add Supplier
+        <button onClick={openCreate} className="btn-primary flex items-center gap-2 px-5 py-2.5 text-sm font-semibold shadow-md">
+          <Plus className="w-4 h-4" />Add Supplier
         </button>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="bg-white border rounded-lg p-4 flex items-center justify-between">
-          <div>
-            <p className="text-sm text-gray-500">Total Suppliers</p>
-            <p className="text-2xl font-bold text-gray-900">{summary?.totalSuppliers ?? 0}</p>
-          </div>
-          <Building2 className="w-8 h-8 text-blue-500" />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-white rounded-2xl border border-slate-200 p-4 flex items-center gap-3 shadow-sm">
+          <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center"><Building2 className="w-5 h-5 text-blue-600" /></div>
+          <div><p className="text-xs text-slate-500 font-medium">Total Suppliers</p><p className="text-2xl font-bold text-slate-800">{summary?.totalSuppliers ?? 0}</p></div>
         </div>
-
-        <div className="bg-white border rounded-lg p-4 flex items-center justify-between">
-          <div>
-            <p className="text-sm text-gray-500">Total Outstanding</p>
-            <p className="text-2xl font-bold text-red-600">
-              PKR {(summary?.totalOutstanding ?? 0).toLocaleString()}
-            </p>
-          </div>
-          <TrendingUp className="w-8 h-8 text-red-500" />
+        <div className="bg-white rounded-2xl border border-slate-200 p-4 flex items-center gap-3 shadow-sm">
+          <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center"><TrendingUp className="w-5 h-5 text-red-600" /></div>
+          <div><p className="text-xs text-slate-500 font-medium">Total Outstanding</p><p className="text-xl font-bold text-red-600">PKR {(summary?.totalOutstanding ?? 0).toLocaleString()}</p></div>
         </div>
-
-        <div className="bg-white border rounded-lg p-4 flex items-center justify-between">
-          <div>
-            <p className="text-sm text-gray-500">Suppliers with Balance</p>
-            <p className="text-2xl font-bold text-orange-600">{summary?.suppliersWithBalance ?? 0}</p>
-          </div>
-          <AlertCircle className="w-8 h-8 text-orange-500" />
+        <div className="bg-white rounded-2xl border border-slate-200 p-4 flex items-center gap-3 shadow-sm">
+          <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center"><AlertCircle className="w-5 h-5 text-orange-500" /></div>
+          <div><p className="text-xs text-slate-500 font-medium">Suppliers with Balance</p><p className="text-2xl font-bold text-orange-600">{summary?.suppliersWithBalance ?? 0}</p></div>
         </div>
       </div>
 
       {/* Search */}
-      <div className="mb-4">
+      <div>
         <input
           type="text"
           placeholder="Search suppliers by name, contact, phone..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full max-w-sm px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-primary-500"
+          className="w-full max-w-sm px-4 py-2.5 border border-slate-200 rounded-xl text-sm bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
         />
       </div>
 

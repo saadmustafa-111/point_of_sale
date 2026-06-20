@@ -235,65 +235,52 @@ export default function PurchasesPage() {
 
   // ─── render ────────────────────────────────────────────────────────────────
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Purchase Ledger</h1>
-          <p className="text-gray-500 mt-1">Track stock picked on credit from suppliers & record payments</p>
+          <h1 className="text-2xl font-bold text-slate-800">Purchase Ledger</h1>
+          <p className="text-sm text-slate-500 mt-0.5">Track stock picked on credit from suppliers &amp; record payments</p>
         </div>
         <div className="flex gap-2">
-          <button
-            onClick={() => { setPaymentForm({ ...EMPTY_PAYMENT }); setShowPaymentModal(true); }}
-            className="btn-ghost border"
-          >
-            <Banknote className="w-4 h-4" />
-            Record Payment
+          <button onClick={() => { setPaymentForm({ ...EMPTY_PAYMENT }); setShowPaymentModal(true); }}
+            className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold border border-slate-200 bg-white rounded-xl hover:bg-slate-50 text-slate-700 transition shadow-sm">
+            <Banknote className="w-4 h-4" />Record Payment
           </button>
-          <button
-            onClick={() => { setOrderForm({ ...EMPTY_ORDER }); setShowOrderModal(true); }}
-            className="btn-primary"
-          >
-            <Plus className="w-4 h-4" />
-            New Purchase Order
+          <button onClick={() => { setOrderForm({ ...EMPTY_ORDER }); setShowOrderModal(true); }}
+            className="btn-primary flex items-center gap-2 px-5 py-2.5 text-sm font-semibold shadow-md">
+            <Plus className="w-4 h-4" />New Purchase Order
           </button>
         </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white border rounded-lg p-4">
-          <p className="text-xs text-gray-500 mb-1">Total Orders</p>
-          <p className="text-2xl font-bold text-gray-900">{stats?.totalOrders ?? 0}</p>
-          <ShoppingBag className="w-5 h-5 text-blue-400 mt-1" />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-white rounded-2xl border border-slate-200 p-4 flex items-center gap-3 shadow-sm">
+          <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center"><ShoppingBag className="w-5 h-5 text-blue-600" /></div>
+          <div><p className="text-xs text-slate-500 font-medium">Total Orders</p><p className="text-2xl font-bold text-slate-800">{stats?.totalOrders ?? 0}</p></div>
         </div>
-        <div className="bg-white border rounded-lg p-4">
-          <p className="text-xs text-gray-500 mb-1">Pending Receipt</p>
-          <p className="text-2xl font-bold text-yellow-600">{stats?.pendingOrders ?? 0}</p>
-          <Clock className="w-5 h-5 text-yellow-400 mt-1" />
+        <div className="bg-white rounded-2xl border border-slate-200 p-4 flex items-center gap-3 shadow-sm">
+          <div className="w-10 h-10 rounded-xl bg-yellow-50 flex items-center justify-center"><Clock className="w-5 h-5 text-yellow-600" /></div>
+          <div><p className="text-xs text-slate-500 font-medium">Pending Receipt</p><p className="text-2xl font-bold text-yellow-600">{stats?.pendingOrders ?? 0}</p></div>
         </div>
-        <div className="bg-white border rounded-lg p-4">
-          <p className="text-xs text-gray-500 mb-1">To Pay (Received)</p>
-          <p className="text-2xl font-bold text-orange-600">{stats?.receivedOrders ?? 0}</p>
-          <CreditCard className="w-5 h-5 text-orange-400 mt-1" />
+        <div className="bg-white rounded-2xl border border-slate-200 p-4 flex items-center gap-3 shadow-sm">
+          <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center"><CreditCard className="w-5 h-5 text-orange-500" /></div>
+          <div><p className="text-xs text-slate-500 font-medium">To Pay (Received)</p><p className="text-2xl font-bold text-orange-600">{stats?.receivedOrders ?? 0}</p></div>
         </div>
-        <div className="bg-white border rounded-lg p-4">
-          <p className="text-xs text-gray-500 mb-1">Total Outstanding</p>
-          <p className="text-lg font-bold text-red-600">{fmt(stats?.totalOutstanding ?? 0)}</p>
-          <TrendingDown className="w-5 h-5 text-red-400 mt-1" />
+        <div className="bg-white rounded-2xl border border-slate-200 p-4 flex items-center gap-3 shadow-sm">
+          <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center"><TrendingDown className="w-5 h-5 text-red-600" /></div>
+          <div><p className="text-xs text-slate-500 font-medium">Total Outstanding</p><p className="text-lg font-bold text-red-600">{fmt(stats?.totalOutstanding ?? 0)}</p></div>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-4 border-b">
+      <div className="flex gap-1 border-b border-slate-200">
         {(['orders', 'payments'] as Tab[]).map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`px-5 py-2.5 text-sm font-medium capitalize border-b-2 transition-colors ${
-              tab === t ? 'border-primary-600 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
-          >
+          <button key={t} onClick={() => setTab(t)}
+            className={`px-5 py-2.5 text-sm font-semibold capitalize border-b-2 transition-colors ${
+              tab === t ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'
+            }`}>
             {t === 'orders' ? 'Purchase Orders' : 'Payment History'}
           </button>
         ))}

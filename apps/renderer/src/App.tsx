@@ -1,6 +1,11 @@
-                                              import { Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './store/authStore';
+import { setApiBaseUrl } from './services/api';
+import { setupService } from './services';
 import LoginPage from './pages/LoginPage';
+import SetupWizard from './pages/SetupWizard';
+import FirstAdminSetup from './pages/FirstAdminSetup';
 import DashboardLayout from './layouts/DashboardLayout';
 
 // Admin pages
@@ -32,6 +37,67 @@ function PrivateRoute({ children, adminOnly = false }: { children: React.ReactNo
 
 export default function App() {
   const { user } = useAuthStore();
+  const [bootState, setBootState] = useState<'loading' | 'setup' | 'first-admin' | 'ready'>('loading');
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function boot() {
+      const checkFirstAdmin = async (mode: 'server' | 'client' | null) => {
+        if (mode !== 'server' && window.electron) return false;
+        const status = await setupService.status();
+        return Boolean(status?.needsFirstAdmin);
+      };
+
+      if (!window.electron) {
+        setApiBaseUrl('/api/v1');
+        try {
+          const needsFirstAdmin = await checkFirstAdmin(null);
+          if (mounted) setBootState(needsFirstAdmin ? 'first-admin' : 'ready');
+        } catch (_) {
+          if (mounted) setBootState('ready');
+        }
+        return;
+      }
+
+      try {
+        const [mode, apiUrl] = await Promise.all([
+          window.electron.getAppMode(),
+          window.electron.getApiUrl(),
+        ]);
+
+        if (!mode || !apiUrl) {
+          if (mounted) setBootState('setup');
+          return;
+        }
+
+        setApiBaseUrl(apiUrl);
+        const needsFirstAdmin = await checkFirstAdmin(mode);
+        if (mounted) setBootState(needsFirstAdmin ? 'first-admin' : 'ready');
+      } catch (_) {
+        if (mounted) setBootState('setup');
+      }
+    }
+
+    boot();
+    return () => { mounted = false; };
+  }, []);
+
+  if (bootState === 'loading') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-100">
+        <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (bootState === 'setup') {
+    return <SetupWizard onComplete={() => window.location.reload()} />;
+  }
+
+  if (bootState === 'first-admin') {
+    return <FirstAdminSetup onComplete={() => setBootState('ready')} />;
+  }
 
   return (
     <Routes>

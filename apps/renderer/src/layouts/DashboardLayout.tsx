@@ -1,4 +1,5 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import {
   LayoutDashboard, Package, Tag, Layers, Warehouse,
   Users, ShoppingCart, BarChart2, Settings,
@@ -6,6 +7,7 @@ import {
   CreditCard, RefreshCw, Building2, ShoppingBag,
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
+import { settingsService } from '../services';
 import toast from 'react-hot-toast';
 
 const adminLinks = [
@@ -34,6 +36,13 @@ export default function DashboardLayout() {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
   const links = user?.role === 'ADMIN' ? adminLinks : cashierLinks;
+  const { data: branding } = useQuery({
+    queryKey: ['branding'],
+    queryFn: settingsService.getPublicBranding,
+    staleTime: 60_000,
+  });
+  const posName = branding?.posName || 'Home Appliances POS';
+  const shopName = branding?.shopName || 'Home Appliances';
 
   const handleLogout = () => {
     logout();
@@ -48,8 +57,8 @@ export default function DashboardLayout() {
         <div className="flex items-center gap-3 px-5 py-4 border-b border-border">
           <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">P</div>
           <div>
-            <p className="text-sm font-semibold text-slate-800">POS System</p>
-            <p className="text-xs text-slate-500">Home Appliances</p>
+            <p className="text-sm font-semibold text-slate-800">{posName}</p>
+            <p className="text-xs text-slate-500">{shopName}</p>
           </div>
         </div>
 

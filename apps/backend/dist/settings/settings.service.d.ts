@@ -8,6 +8,13 @@ export declare class SettingsService {
         key: string;
         value: string;
     }[]>;
+    getPublicBranding(): Promise<{
+        posName: string;
+        shopName: string;
+        shopAddress: string;
+        shopPhone: string;
+        currency: string;
+    }>;
     get(key: string): Promise<{
         id: string;
         updatedAt: Date;

@@ -12,6 +12,13 @@ declare class BulkUpsertDto {
 export declare class SettingsController {
     private service;
     constructor(service: SettingsService);
+    publicBranding(): Promise<{
+        posName: string;
+        shopName: string;
+        shopAddress: string;
+        shopPhone: string;
+        currency: string;
+    }>;
     all(): Promise<{
         id: string;
         updatedAt: Date;

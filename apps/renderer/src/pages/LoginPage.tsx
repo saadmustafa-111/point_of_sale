@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '../store/authStore';
-import { authService } from '../services';
+import { authService, settingsService } from '../services';
 import toast from 'react-hot-toast';
 import { Loader2 } from 'lucide-react';
 
@@ -11,6 +12,14 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const { setAuth } = useAuthStore();
   const navigate = useNavigate();
+  const { data: branding } = useQuery({
+    queryKey: ['branding'],
+    queryFn: settingsService.getPublicBranding,
+    retry: false,
+    staleTime: 60_000,
+  });
+  const posName = branding?.posName || 'Home Appliances POS';
+  const shopName = branding?.shopName || 'Home Appliances Shop';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,8 +41,8 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <div className="w-14 h-14 bg-primary-600 rounded-2xl flex items-center justify-center mx-auto mb-4 text-white text-2xl font-bold shadow-lg shadow-primary-600/30">P</div>
-          <h1 className="text-2xl font-bold text-slate-800">POS System</h1>
-          <p className="text-slate-500 text-sm mt-1">Home Appliances Shop</p>
+          <h1 className="text-2xl font-bold text-slate-800">{posName}</h1>
+          <p className="text-slate-500 text-sm mt-1">{shopName}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="card space-y-4">
