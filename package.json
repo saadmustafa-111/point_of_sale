@@ -9,11 +9,15 @@
     "dev:renderer": "npm --prefix apps/renderer run dev",
     "backend:dev": "npm --prefix apps/backend run start:dev",
     "backend:build": "npm --prefix apps/backend run build",
+    "build:backend": "npm --prefix apps/backend run build",
+    "build:renderer": "npm --prefix apps/renderer run build",
+    "build:electron:win": "electron-builder --win --publish never",
+    "build:electron:mac": "electron-builder --mac --publish never",
     "backend:migrate": "npm --prefix apps/backend run prisma:migrate",
     "backend:seed": "npm --prefix apps/backend run prisma:seed",
-    "build": "npm run backend:build && npm --prefix apps/renderer run build && electron-builder",
-    "build:mac": "npm run backend:build && npm --prefix apps/renderer run build && electron-builder --mac",
-    "build:win": "npm run backend:build && npm --prefix apps/renderer run build && electron-builder --win"
+    "build": "npm run build:backend && npm run build:renderer && electron-builder --publish never",
+    "build:mac": "npm run build:backend && npm run build:renderer && npm run build:electron:mac",
+    "build:win": "npm run build:backend && npm run build:renderer && npm run build:electron:win"
   },
   "author": "saad",
   "license": "MIT",
@@ -33,7 +37,27 @@
     "artifactName": "POS-System-${version}-${os}-${arch}.${ext}",
     "files": [
       "electron/**/*",
-      "apps/renderer/dist/**/*"
+      "apps/renderer/dist/**/*",
+      "package.json",
+      "!**/.git/**",
+      "!**/.github/**",
+      "!dist-electron/**",
+      "!apps/renderer/node_modules/**",
+      "!apps/backend/node_modules/**",
+      "!node_modules/.cache/**",
+      "!apps/renderer/src/**",
+      "!apps/backend/src/**",
+      "!apps/renderer/dist/**/*.map",
+      "!apps/backend/**/*.map",
+      "!apps/backend/tsconfig.tsbuildinfo",
+      "!**/*.db",
+      "!**/*.db-journal",
+      "!**/*.sqlite",
+      "!**/*.sqlite3",
+      "!**/*.log",
+      "!screenshots/**",
+      "!**/*.bak",
+      "!**/*.backup"
     ],
     "extraResources": [
       {
@@ -41,14 +65,21 @@
         "to": "backend",
         "filter": [
           "dist/**/*",
-          "node_modules/**/*",
           "prisma/migrations/**/*",
           "prisma/schema.prisma",
-          ".env"
+          "package.json",
+          "!dist/**/*.map",
+          "!**/*.tsbuildinfo",
+          "!**/.cache/**",
+          "!**/*.db",
+          "!**/*.db-journal",
+          "!**/*.sqlite",
+          "!**/*.sqlite3",
+          "!**/*.log"
         ]
       },
       {
-        "from": "apps/backend/prisma/pos.db",
+        "from": "apps/backend/prisma/prisma/pos.db",
         "to": "pos.db"
       }
     ],
