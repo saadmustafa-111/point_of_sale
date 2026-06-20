@@ -29,16 +29,21 @@
     "electron-builder": "^24.9.1",
     "wait-on": "^7.2.0"
   },
-  "build": {
+    "build": {
     "appId": "com.pos.homeappliances",
     "productName": "POS System",
+    "asar": true,
+    "asarUnpack": [
+      "**/*.node"
+    ],
+    "npmRebuild": false,
     "directories": {
       "output": "dist-electron"
     },
     "artifactName": "POS-System-${version}-${os}-${arch}.${ext}",
     "files": [
-      "electron/**/*",
-      "apps/renderer/dist/**/*",
+      "electron/main.js",
+      "electron/preload.js",
       "package.json",
       "!**/.git/**",
       "!**/.github/**",
@@ -61,6 +66,14 @@
       "!**/*.backup"
     ],
     "extraResources": [
+      {
+        "from": "apps/renderer/dist",
+        "to": "renderer/dist",
+        "filter": [
+          "**/*",
+          "!**/*.map"
+        ]
+      },
       {
         "from": "apps/backend",
         "to": "backend",

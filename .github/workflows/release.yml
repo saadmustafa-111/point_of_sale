@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -12,30 +13,25 @@ jobs:
   build-windows:
     name: Build Windows Installer
     runs-on: windows-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: |
-            package-lock.json
-            apps/backend/package-lock.json
-            apps/renderer/package-lock.json
+          node-version: '20'
 
       - name: Install root dependencies
-        run: npm ci
+        run: npm install
 
       - name: Install backend dependencies
-        run: npm ci --prefix apps/backend
+        run: npm install --prefix apps/backend
 
       - name: Install renderer dependencies
-        run: npm ci --prefix apps/renderer
+        run: npm install --prefix apps/renderer
 
       - name: Generate Prisma client
         run: npm --prefix apps/backend run prisma:generate
@@ -51,56 +47,46 @@ jobs:
         run: npm run build:backend
 
       - name: Build renderer
-        run: npm run build:renderer:ci
-
-      - name: Keep backend production dependencies only
-        run: npm prune --omit=dev --prefix apps/backend
+        run: npm run build:renderer
 
       - name: Build Windows installer
         shell: pwsh
         run: |
           $env:DEBUG = "electron-builder,electron-builder:*"
-          npm run build:electron:win
+          npx electron-builder --win --x64 --publish never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload Windows artifacts
+      - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
         with:
           name: windows-installer
-          path: |
-            dist-electron/*.exe
-            dist-electron/*.blockmap
-            dist-electron/latest*.yml
+          path: dist-electron/*.exe
           if-no-files-found: error
+          retention-days: 90
 
   build-macos:
-    name: Build macOS DMG
+    name: Build Mac Installer
     runs-on: macos-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: |
-            package-lock.json
-            apps/backend/package-lock.json
-            apps/renderer/package-lock.json
+          node-version: '20'
 
       - name: Install root dependencies
-        run: npm ci
+        run: npm install
 
       - name: Install backend dependencies
-        run: npm ci --prefix apps/backend
+        run: npm install --prefix apps/backend
 
       - name: Install renderer dependencies
-        run: npm ci --prefix apps/renderer
+        run: npm install --prefix apps/renderer
 
       - name: Generate Prisma client
         run: npm --prefix apps/backend run prisma:generate
@@ -114,26 +100,23 @@ jobs:
         run: npm run build:backend
 
       - name: Build renderer
-        run: npm run build:renderer:ci
+        run: npm run build:renderer
 
-      - name: Keep backend production dependencies only
-        run: npm prune --omit=dev --prefix apps/backend
-
-      - name: Build macOS DMG
-        run: DEBUG=electron-builder,electron-builder:* npm run build:electron:mac
+      - name: Build Mac installer
+        run: DEBUG=electron-builder,electron-builder:* npx electron-builder --mac --publish never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_IDENTITY_AUTO_DISCOVERY: false
 
-      - name: Upload macOS artifacts
+      - name: Upload Mac artifact
         uses: actions/upload-artifact@v4
         with:
-          name: macos-installer
+          name: mac-installer
           path: |
             dist-electron/*.dmg
             dist-electron/*.zip
-            dist-electron/*.blockmap
-            dist-electron/latest*.yml
           if-no-files-found: error
+          retention-days: 90
 
   publish-release:
     name: Publish GitHub Release
@@ -144,16 +127,16 @@ jobs:
       - build-macos
 
     steps:
-      - name: Download Windows artifacts
+      - name: Download Windows artifact
         uses: actions/download-artifact@v4
         with:
           name: windows-installer
           path: release-assets
 
-      - name: Download macOS artifacts
+      - name: Download Mac artifact
         uses: actions/download-artifact@v4
         with:
-          name: macos-installer
+          name: mac-installer
           path: release-assets
 
       - name: Create GitHub Release
@@ -170,10 +153,8 @@ jobs:
             - macOS: download the `.dmg` file.
 
             Security note:
-            - This build is not code signed unless signing certificates are configured in GitHub Actions.
+            - This build is unsigned unless code signing certificates are configured.
             - Windows may show a SmartScreen warning.
             - macOS may show an unidentified developer warning.
-
-            For professional public distribution, configure Windows and macOS code signing later.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

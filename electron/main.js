@@ -10,7 +10,9 @@ const https = require('https');
 
 const isDev = process.env.NODE_ENV === 'development';
 const RENDERER_URL = 'http://localhost:5173';
-const RENDERER_BUILD = path.join(__dirname, '../apps/renderer/dist/index.html');
+const RENDERER_BUILD = isDev
+  ? path.join(__dirname, '../apps/renderer/dist/index.html')
+  : path.join(process.resourcesPath, 'renderer', 'dist', 'index.html');
 const BACKEND_PORT = 3000;
 const DEFAULT_SERVER_HOSTNAME = 'SHOP-SERVER';
 const DEFAULT_API_URL = `http://${DEFAULT_SERVER_HOSTNAME}:${BACKEND_PORT}/api/v1`;

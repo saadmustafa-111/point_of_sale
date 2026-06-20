@@ -1,19 +1,29 @@
 name: Build POS Installers
 
 on:
-  workflow_dispatch:   # allows manual trigger from GitHub UI
+  workflow_dispatch:
 
 jobs:
   build-mac:
     runs-on: macos-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: 20 }
+        with:
+          node-version: '20'
       - run: npm install
       - run: npm install --prefix apps/backend
       - run: npm install --prefix apps/renderer
-      - run: npm run build:mac
+      - run: npm --prefix apps/backend run prisma:generate
+      - run: |
+          mkdir -p apps/backend/prisma/prisma
+          DATABASE_URL=file:./prisma/prisma/pos.db npm --prefix apps/backend run prisma:migrate:prod
+      - run: npm run build:backend
+      - run: npm run build:renderer
+      - run: DEBUG=electron-builder,electron-builder:* npx electron-builder --mac --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
       - uses: actions/upload-artifact@v4
         with:
           name: mac-installer
@@ -21,14 +31,27 @@ jobs:
 
   build-win:
     runs-on: windows-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: 20 }
+        with:
+          node-version: '20'
       - run: npm install
       - run: npm install --prefix apps/backend
       - run: npm install --prefix apps/renderer
-      - run: npm run build:win
+      - run: npm --prefix apps/backend run prisma:generate
+      - shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force apps/backend/prisma/prisma
+          $env:DATABASE_URL = "file:./prisma/prisma/pos.db"
+          npm --prefix apps/backend run prisma:migrate:prod
+      - run: npm run build:backend
+      - run: npm run build:renderer
+      - shell: pwsh
+        run: |
+          $env:DEBUG = "electron-builder,electron-builder:*"
+          npx electron-builder --win --x64 --publish never
       - uses: actions/upload-artifact@v4
         with:
           name: windows-installer
