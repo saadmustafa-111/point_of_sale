@@ -12,13 +12,15 @@
     "build:backend": "npm --prefix apps/backend run build",
     "build:renderer": "npm --prefix apps/renderer run build:ci",
     "build:renderer:ci": "npm --prefix apps/renderer run build:ci",
+    "prepare:backend-runtime": "node scripts/prepare-backend-runtime.mjs",
+    "release:size-report": "node scripts/print-release-size-report.mjs",
     "build:electron:win": "electron-builder --win --publish never",
     "build:electron:mac": "electron-builder --mac --publish never",
     "backend:migrate": "npm --prefix apps/backend run prisma:migrate",
     "backend:seed": "npm --prefix apps/backend run prisma:seed",
-    "build": "npm run build:backend && npm run build:renderer && electron-builder --publish never",
-    "build:mac": "npm run build:backend && npm run build:renderer && npm run build:electron:mac",
-    "build:win": "npm run build:backend && npm run build:renderer && npm run build:electron:win"
+    "build": "npm run build:backend && npm run build:renderer && npm run prepare:backend-runtime && electron-builder --publish never",
+    "build:mac": "npm run build:backend && npm run build:renderer && npm run prepare:backend-runtime && npm run build:electron:mac",
+    "build:win": "npm run build:backend && npm run build:renderer && npm run prepare:backend-runtime && npm run build:electron:win"
   },
   "author": "saad",
   "license": "MIT",
@@ -29,7 +31,7 @@
     "electron-builder": "^24.9.1",
     "wait-on": "^7.2.0"
   },
-    "build": {
+  "build": {
     "appId": "com.pos.homeappliances",
     "productName": "POS System",
     "asar": true,
@@ -76,14 +78,10 @@
         ]
       },
       {
-        "from": "apps/backend",
+        "from": "release/backend-runtime",
         "to": "backend",
         "filter": [
-          "dist/**/*",
-          "node_modules/**/*",
-          "prisma/migrations/**/*",
-          "prisma/schema.prisma",
-          "package.json",
+          "**/*",
           "!dist/**/*.map",
           "!node_modules/**/*.map",
           "!node_modules/**/*.md",

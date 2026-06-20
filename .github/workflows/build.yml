@@ -5,6 +5,7 @@ on:
 
 jobs:
   build-mac:
+    name: Build Mac DMG
     runs-on: macos-latest
     timeout-minutes: 45
     steps:
@@ -17,16 +18,21 @@ jobs:
       - run: npm install --prefix apps/renderer
       - run: npm --prefix apps/backend run prisma:generate
       - run: npm run build:backend
-      - run: npm run build:renderer
+      - run: npm run build:renderer:ci
+      - run: npm run prepare:backend-runtime
+      - run: npm run release:size-report
       - run: DEBUG=electron-builder,electron-builder:* npx electron-builder --mac --publish never
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
       - uses: actions/upload-artifact@v4
         with:
-          name: mac-installer
-          path: dist-electron/*.dmg
+          name: mac-dmg
+          path: |
+            dist-electron/*.dmg
+            dist-electron/*.zip
 
   build-win:
+    name: Build Windows Portable EXE
     runs-on: windows-latest
     timeout-minutes: 45
     steps:
@@ -39,44 +45,27 @@ jobs:
       - run: npm install --prefix apps/renderer
       - run: npm --prefix apps/backend run prisma:generate
       - run: npm run build:backend
-      - run: npm run build:renderer
-      - run: npm prune --omit=dev --prefix apps/backend
+      - run: npm run build:renderer:ci
+      - run: npm run prepare:backend-runtime
+      - run: npm run release:size-report
       - shell: pwsh
         run: |
-          function Show-PathSize($Path) {
-            if (Test-Path $Path) {
-              $bytes = (Get-ChildItem $Path -Recurse -Force -File | Measure-Object Length -Sum).Sum
-              $mb = [Math]::Round(($bytes / 1MB), 2)
-              Write-Host "$Path size: $mb MB"
-            } else {
-              Write-Host "$Path missing"
-            }
+          Write-Host "START BUILD $(Get-Date -Format o)"
+          Write-Host "COMMAND: npx electron-builder --win --x64 --publish never"
+          $env:DEBUG = "electron-builder,electron-builder:*"
+          & npx electron-builder --win --x64 --publish never
+          $exitCode = $LASTEXITCODE
+          Write-Host "END BUILD $(Get-Date -Format o) exit code: $exitCode"
+          if ($exitCode -ne 0) {
+            throw "Windows portable build failed. Command: npx electron-builder --win --x64 --publish never. Exit code: $exitCode"
           }
-
-          Show-PathSize "apps/backend/node_modules"
-          Show-PathSize "apps/backend/dist"
-          Show-PathSize "apps/renderer/dist"
-          $backendNodeModuleFiles = (Get-ChildItem "apps/backend/node_modules" -Recurse -Force -File | Measure-Object).Count
-          Write-Host "apps/backend/node_modules file count: $backendNodeModuleFiles"
-      - shell: pwsh
-        run: |
-          $env:DEBUG = "electron-builder,electron-builder:*"
-          npx electron-builder --win --x64 --dir
-      - shell: pwsh
-        run: |
-          dir dist-electron
-          $bytes = (Get-ChildItem "dist-electron/win-unpacked" -Recurse -Force -File | Measure-Object Length -Sum).Sum
-          $mb = [Math]::Round(($bytes / 1MB), 2)
-          $files = (Get-ChildItem "dist-electron/win-unpacked" -Recurse -Force -File | Measure-Object).Count
-          Write-Host "dist-electron/win-unpacked size before portable packaging: $mb MB"
-          Write-Host "dist-electron/win-unpacked file count: $files"
-      - shell: pwsh
-        run: |
-          $env:DEBUG = "electron-builder,electron-builder:*"
-          npx electron-builder --win --x64 --publish never
-      - shell: pwsh
+      - if: always()
+        run: npm run release:size-report
+      - if: always()
+        shell: pwsh
         run: dir dist-electron
       - uses: actions/upload-artifact@v4
         with:
           name: windows-portable
           path: dist-electron/*.exe
+          if-no-files-found: error

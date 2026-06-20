@@ -16,93 +16,56 @@ jobs:
     timeout-minutes: 45
 
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Install root dependencies
+      - name: Install root deps
         run: npm install
 
-      - name: Install backend dependencies
+      - name: Install backend deps
         run: npm install --prefix apps/backend
 
-      - name: Install renderer dependencies
+      - name: Install renderer deps
         run: npm install --prefix apps/renderer
 
-      - name: Generate Prisma client
+      - name: Generate Prisma
         run: npm --prefix apps/backend run prisma:generate
 
       - name: Build backend
         run: npm run build:backend
 
       - name: Build renderer
-        run: npm run build:renderer
+        run: npm run build:renderer:ci
 
-      - name: Prune backend dev dependencies
-        run: npm prune --omit=dev --prefix apps/backend
+      - name: Prepare backend runtime
+        run: npm run prepare:backend-runtime
 
-      - name: Check package input sizes
-        shell: pwsh
-        run: |
-          function Show-PathSize($Path) {
-            if (Test-Path $Path) {
-              $bytes = (Get-ChildItem $Path -Recurse -Force -File | Measure-Object Length -Sum).Sum
-              $mb = [Math]::Round(($bytes / 1MB), 2)
-              Write-Host "$Path size: $mb MB"
-            } else {
-              Write-Host "$Path missing"
-            }
-          }
-
-          Show-PathSize "apps/backend/node_modules"
-          Show-PathSize "apps/backend/dist"
-          Show-PathSize "apps/renderer/dist"
-          $backendNodeModuleFiles = (Get-ChildItem "apps/backend/node_modules" -Recurse -Force -File | Measure-Object).Count
-          Write-Host "apps/backend/node_modules file count: $backendNodeModuleFiles"
-
-      - name: Report largest backend dependency folders
-        shell: pwsh
-        run: |
-          Write-Host "Top 20 largest package folders inside apps/backend/node_modules"
-          $packages = @()
-          Get-ChildItem "apps/backend/node_modules" -Directory -Force | ForEach-Object {
-            if ($_.Name.StartsWith("@")) {
-              $packages += Get-ChildItem $_.FullName -Directory -Force
-            } else {
-              $packages += $_
-            }
-          }
-
-          $packages |
-            ForEach-Object {
-              $bytes = (Get-ChildItem $_.FullName -Recurse -Force -File | Measure-Object Length -Sum).Sum
-              [PSCustomObject]@{
-                SizeMB = [Math]::Round(($bytes / 1MB), 2)
-                Path = $_.FullName.Replace((Get-Location).Path + "\", "")
-              }
-            } |
-            Sort-Object SizeMB -Descending |
-            Select-Object -First 20 |
-            Format-Table -AutoSize
+      - name: Print pre-package size report
+        run: npm run release:size-report
 
       - name: Build Windows portable EXE
         shell: pwsh
         run: |
-          Write-Host "START BUILD"
+          Write-Host "START BUILD $(Get-Date -Format o)"
           Write-Host "COMMAND: npx electron-builder --win --x64 --publish never"
           $env:DEBUG = "electron-builder,electron-builder:*"
           & npx electron-builder --win --x64 --publish never
           $exitCode = $LASTEXITCODE
-          Write-Host "END BUILD exit code: $exitCode"
+          Write-Host "END BUILD $(Get-Date -Format o) exit code: $exitCode"
           if ($exitCode -ne 0) {
             throw "Windows portable build failed. Command: npx electron-builder --win --x64 --publish never. Exit code: $exitCode"
           }
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Print post-package size report
+        if: always()
+        run: npm run release:size-report
 
       - name: Check Windows artifacts
         if: always()
@@ -114,16 +77,15 @@ jobs:
             Write-Host "dist-electron folder does not exist"
           }
 
-          $expected = "dist-electron/POS-System-1.0.0-win-x64-portable.exe"
-          if (Test-Path $expected) {
-            Write-Host "Found expected portable EXE: $expected"
+          $exeFiles = Get-ChildItem "dist-electron" -Filter "*.exe" -File -ErrorAction SilentlyContinue
+          if ($exeFiles) {
+            Write-Host "Portable EXE artifacts:"
+            $exeFiles
           } else {
-            Write-Host "Expected portable EXE missing: $expected"
-            Write-Host "Available EXE files:"
-            Get-ChildItem "dist-electron" -Filter "*.exe" -File -ErrorAction SilentlyContinue
+            Write-Host "No Windows portable EXE found in dist-electron"
           }
 
-      - name: Upload Windows artifact
+      - name: Upload Windows EXE
         uses: actions/upload-artifact@v4
         with:
           name: windows-portable
@@ -132,47 +94,57 @@ jobs:
           retention-days: 90
 
   build-macos:
-    name: Build Mac Installer
+    name: Build Mac DMG
     runs-on: macos-latest
     timeout-minutes: 45
 
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Install root dependencies
+      - name: Install root deps
         run: npm install
 
-      - name: Install backend dependencies
+      - name: Install backend deps
         run: npm install --prefix apps/backend
 
-      - name: Install renderer dependencies
+      - name: Install renderer deps
         run: npm install --prefix apps/renderer
 
-      - name: Generate Prisma client
+      - name: Generate Prisma
         run: npm --prefix apps/backend run prisma:generate
 
       - name: Build backend
         run: npm run build:backend
 
       - name: Build renderer
-        run: npm run build:renderer
+        run: npm run build:renderer:ci
 
-      - name: Build Mac installer
-        run: DEBUG=electron-builder,electron-builder:* npx electron-builder --mac --publish never
+      - name: Prepare backend runtime
+        run: npm run prepare:backend-runtime
+
+      - name: Print pre-package size report
+        run: npm run release:size-report
+
+      - name: Build Mac DMG
+        run: |
+          echo "START BUILD $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "COMMAND: npx electron-builder --mac --publish never"
+          DEBUG=electron-builder,electron-builder:* npx electron-builder --mac --publish never
+          echo "END BUILD $(date -u +%Y-%m-%dT%H:%M:%SZ)"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: false
 
-      - name: Upload Mac artifact
+      - name: Upload Mac DMG
         uses: actions/upload-artifact@v4
         with:
-          name: mac-installer
+          name: mac-dmg
           path: |
             dist-electron/*.dmg
             dist-electron/*.zip
@@ -188,19 +160,19 @@ jobs:
       - build-macos
 
     steps:
-      - name: Download Windows artifact
+      - name: Download Windows EXE
         uses: actions/download-artifact@v4
         with:
           name: windows-portable
           path: release-assets
 
-      - name: Download Mac artifact
+      - name: Download Mac DMG
         uses: actions/download-artifact@v4
         with:
-          name: mac-installer
+          name: mac-dmg
           path: release-assets
 
-      - name: Create GitHub Release
+      - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           name: POS System ${{ github.ref_name }}
