@@ -20,7 +20,8 @@ jobs:
       - run: npm run build:backend
       - run: npm run build:renderer:ci
       - run: npm run prepare:backend-runtime
-      - run: npm run release:size-report
+      - continue-on-error: true
+        run: npm run release:size-report
       - run: DEBUG=electron-builder,electron-builder:* npx electron-builder --mac --publish never
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
@@ -47,7 +48,8 @@ jobs:
       - run: npm run build:backend
       - run: npm run build:renderer:ci
       - run: npm run prepare:backend-runtime
-      - run: npm run release:size-report
+      - continue-on-error: true
+        run: npm run release:size-report
       - shell: pwsh
         run: |
           Write-Host "START BUILD $(Get-Date -Format o)"
@@ -60,6 +62,7 @@ jobs:
             throw "Windows ZIP build failed. Command: npx electron-builder --win --x64 --publish never. Exit code: $exitCode"
           }
       - if: always()
+        continue-on-error: true
         run: npm run release:size-report
       - if: always()
         shell: pwsh

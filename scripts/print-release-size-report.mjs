@@ -9,18 +9,37 @@ function getStats(target) {
 
   if (!existsSync(target)) return null;
 
-  const stat = statSync(target);
+  let stat;
+  try {
+    stat = statSync(target);
+  } catch (error) {
+    console.warn(`Could not stat ${relative(rootDir, target)}: ${error.message}`);
+    return null;
+  }
+
   if (stat.isFile()) return { bytes: stat.size, files: 1 };
 
   function walk(current) {
-    for (const entry of readdirSync(current, { withFileTypes: true })) {
+    let entries = [];
+    try {
+      entries = readdirSync(current, { withFileTypes: true });
+    } catch (error) {
+      console.warn(`Could not read ${relative(rootDir, current)}: ${error.message}`);
+      return;
+    }
+
+    for (const entry of entries) {
       const fullPath = join(current, entry.name);
       if (entry.isDirectory()) {
         walk(fullPath);
       } else if (entry.isFile()) {
-        const fileStat = statSync(fullPath);
-        bytes += fileStat.size;
-        files += 1;
+        try {
+          const fileStat = statSync(fullPath);
+          bytes += fileStat.size;
+          files += 1;
+        } catch (error) {
+          console.warn(`Could not stat ${relative(rootDir, fullPath)}: ${error.message}`);
+        }
       }
     }
   }
@@ -46,12 +65,28 @@ function packageDirs(nodeModulesDir) {
   if (!existsSync(nodeModulesDir)) return [];
 
   const dirs = [];
-  for (const entry of readdirSync(nodeModulesDir, { withFileTypes: true })) {
+  let entries = [];
+  try {
+    entries = readdirSync(nodeModulesDir, { withFileTypes: true });
+  } catch (error) {
+    console.warn(`Could not read ${relative(rootDir, nodeModulesDir)}: ${error.message}`);
+    return dirs;
+  }
+
+  for (const entry of entries) {
     if (!entry.isDirectory()) continue;
 
     const packagePath = join(nodeModulesDir, entry.name);
     if (entry.name.startsWith('@')) {
-      for (const scoped of readdirSync(packagePath, { withFileTypes: true })) {
+      let scopedEntries = [];
+      try {
+        scopedEntries = readdirSync(packagePath, { withFileTypes: true });
+      } catch (error) {
+        console.warn(`Could not read ${relative(rootDir, packagePath)}: ${error.message}`);
+        continue;
+      }
+
+      for (const scoped of scopedEntries) {
         if (scoped.isDirectory()) dirs.push(join(packagePath, scoped.name));
       }
     } else {
@@ -93,5 +128,11 @@ printPathSize('apps/backend/node_modules', join(rootDir, 'apps', 'backend', 'nod
 printPathSize('apps/backend/dist', join(rootDir, 'apps', 'backend', 'dist'));
 printPathSize('apps/renderer/dist', join(rootDir, 'apps', 'renderer', 'dist'));
 
-printLargestPackages('Top 30 largest packages in apps/backend/node_modules', join(rootDir, 'apps', 'backend', 'node_modules'), 30);
-printLargestPackages('Top 30 largest packages in release/backend-runtime/node_modules', join(rootDir, 'release', 'backend-runtime', 'node_modules'), 30);
+try {
+  printLargestPackages('Top 30 largest packages in apps/backend/node_modules', join(rootDir, 'apps', 'backend', 'node_modules'), 30);
+  printLargestPackages('Top 30 largest packages in release/backend-runtime/node_modules', join(rootDir, 'release', 'backend-runtime', 'node_modules'), 30);
+} catch (error) {
+  console.warn(`Size report warning: ${error.message}`);
+}
+
+process.exit(0);
