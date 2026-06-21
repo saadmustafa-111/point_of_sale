@@ -8,21 +8,61 @@ const runtimeDir = join(rootDir, 'release', 'backend-runtime');
 const homeDir = join(rootDir, 'release', '.home');
 const prismaCacheDir = join(rootDir, 'release', '.prisma-cache');
 
+function runtimeEnv() {
+  return {
+    ...process.env,
+    CHECKPOINT_DISABLE: '1',
+    CI: '1',
+    HOME: homeDir,
+    NO_COLOR: '1',
+    PRISMA_ENGINES_CACHE_DIR: prismaCacheDir,
+    PRISMA_HIDE_UPDATE_MESSAGE: '1',
+    XDG_CACHE_HOME: join(rootDir, 'release', '.cache'),
+  };
+}
+
 function run(command, args, options = {}) {
   console.log(`[backend-runtime] ${command} ${args.join(' ')}`);
   const result = spawnSync(command, args, {
     stdio: 'inherit',
     shell: process.platform === 'win32',
-    env: {
-      ...process.env,
-      HOME: homeDir,
-      PRISMA_ENGINES_CACHE_DIR: prismaCacheDir,
-      XDG_CACHE_HOME: join(rootDir, 'release', '.cache'),
-    },
+    env: runtimeEnv(),
     ...options,
   });
 
   if (result.status !== 0) {
+    process.exit(result.status || 1);
+  }
+}
+
+function hasGeneratedPrismaClient() {
+  return (
+    existsSync(join(runtimeDir, 'node_modules', '@prisma', 'client')) &&
+    existsSync(join(runtimeDir, 'node_modules', '.prisma', 'client'))
+  );
+}
+
+function generatePrismaClient() {
+  const prismaCli = join(runtimeDir, 'node_modules', 'prisma', 'build', 'index.js');
+
+  if (!existsSync(prismaCli)) {
+    console.error(`[backend-runtime] Prisma CLI missing at ${prismaCli}`);
+    process.exit(1);
+  }
+
+  console.log(`[backend-runtime] node ${relative(runtimeDir, prismaCli)} generate --schema prisma/schema.prisma`);
+  const result = spawnSync(process.execPath, [prismaCli, 'generate', '--schema', 'prisma/schema.prisma'], {
+    cwd: runtimeDir,
+    env: runtimeEnv(),
+    stdio: 'inherit',
+  });
+
+  if (result.status !== 0) {
+    if (hasGeneratedPrismaClient()) {
+      console.warn(`[backend-runtime] Prisma generate exited with ${result.status}, but the generated client exists. Continuing.`);
+      return;
+    }
+
     process.exit(result.status || 1);
   }
 }
@@ -124,7 +164,7 @@ function formatMb(bytes) {
 
 copyRequiredFiles();
 run('npm', ['ci', '--omit=dev'], { cwd: runtimeDir });
-run('npx', ['prisma', 'generate', '--schema', 'prisma/schema.prisma'], { cwd: runtimeDir });
+generatePrismaClient();
 cleanRuntimeTree(runtimeDir);
 
 const runtimeStats = getStats(runtimeDir);
