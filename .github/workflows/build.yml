@@ -36,6 +36,8 @@ jobs:
     name: Build Windows ZIP
     runs-on: windows-latest
     timeout-minutes: 45
+    env:
+      npm_config_cache: ${{ github.workspace }}\.npm-cache
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -49,21 +51,21 @@ jobs:
       - run: npm run build:renderer:ci
       - run: npm run prepare:backend-runtime
       - continue-on-error: true
-        run: npm run release:size-report
+        run: node scripts/print-release-size-report.mjs
       - shell: pwsh
         run: |
           Write-Host "START BUILD $(Get-Date -Format o)"
-          Write-Host "COMMAND: npx electron-builder --win --x64 --publish never"
+          Write-Host "COMMAND: node node_modules/electron-builder/cli.js --win --x64 --publish never"
           $env:DEBUG = "electron-builder,electron-builder:*"
-          & npx electron-builder --win --x64 --publish never
+          & node node_modules/electron-builder/cli.js --win --x64 --publish never
           $exitCode = $LASTEXITCODE
           Write-Host "END BUILD $(Get-Date -Format o) exit code: $exitCode"
           if ($exitCode -ne 0) {
-            throw "Windows ZIP build failed. Command: npx electron-builder --win --x64 --publish never. Exit code: $exitCode"
+            throw "Windows ZIP build failed. Command: node node_modules/electron-builder/cli.js --win --x64 --publish never. Exit code: $exitCode"
           }
       - if: always()
         continue-on-error: true
-        run: npm run release:size-report
+        run: node scripts/print-release-size-report.mjs
       - if: always()
         shell: pwsh
         run: dir dist-electron
