@@ -227,7 +227,7 @@ GitHub Actions will then:
 For Windows clients:
 
 ```text
-Download POS-System-1.0.4-win-x64.zip from GitHub Releases.
+Download POS-System-1.0.5-win-x64.zip from GitHub Releases.
 ```
 
 For Mac clients:
@@ -248,7 +248,7 @@ The Windows release is delivered as a ZIP file. This avoids the slow single-EXE 
 1. Download:
 
 ```text
-POS-System-1.0.4-win-x64.zip
+POS-System-1.0.5-win-x64.zip
 ```
 
 2. Right-click the ZIP and choose **Extract All**.

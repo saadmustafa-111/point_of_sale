@@ -51,17 +51,17 @@ jobs:
         continue-on-error: true
         run: node scripts/print-release-size-report.mjs
 
-      - name: Build Windows ZIP
+      - name: Build Windows unpacked app
         shell: pwsh
         run: |
           Write-Host "START BUILD $(Get-Date -Format o)"
-          Write-Host "COMMAND: node node_modules/electron-builder/cli.js --win --x64 --publish never"
+          Write-Host "COMMAND: node node_modules/electron-builder/cli.js --win --x64 --dir"
           $env:DEBUG = "electron-builder,electron-builder:*"
-          & node node_modules/electron-builder/cli.js --win --x64 --publish never
+          & node node_modules/electron-builder/cli.js --win --x64 --dir
           $exitCode = $LASTEXITCODE
           Write-Host "END BUILD $(Get-Date -Format o) exit code: $exitCode"
           if ($exitCode -ne 0) {
-            throw "Windows ZIP build failed. Command: node node_modules/electron-builder/cli.js --win --x64 --publish never. Exit code: $exitCode"
+            throw "Windows unpacked build failed. Command: node node_modules/electron-builder/cli.js --win --x64 --dir. Exit code: $exitCode"
           }
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -81,20 +81,20 @@ jobs:
             Write-Host "dist-electron folder does not exist"
           }
 
-          $zipFiles = Get-ChildItem "dist-electron" -Filter "*.zip" -File -ErrorAction SilentlyContinue
-          if ($zipFiles) {
-            Write-Host "Windows ZIP artifacts:"
-            $zipFiles
+          if (Test-Path "dist-electron/win-unpacked/POS System.exe") {
+            Write-Host "Windows unpacked app is ready:"
+            Get-ChildItem "dist-electron/win-unpacked" | Select-Object -First 20
           } else {
-            Write-Host "No Windows ZIP found in dist-electron"
+            Write-Host "Windows unpacked app is missing"
           }
 
-      - name: Upload Windows ZIP
+      - name: Upload Windows unpacked app
         uses: actions/upload-artifact@v4
         with:
-          name: windows-zip
-          path: dist-electron/*.zip
+          name: windows-unpacked
+          path: dist-electron/win-unpacked/**
           if-no-files-found: error
+          compression-level: 0
           retention-days: 90
 
   build-macos:
@@ -165,17 +165,23 @@ jobs:
       - build-macos
 
     steps:
-      - name: Download Windows ZIP
+      - name: Download Windows unpacked app
         uses: actions/download-artifact@v4
         with:
-          name: windows-zip
-          path: release-assets
+          name: windows-unpacked
+          path: release-assets/POS-System-${{ github.ref_name }}-win-x64
 
       - name: Download Mac DMG
         uses: actions/download-artifact@v4
         with:
           name: mac-dmg
           path: release-assets
+
+      - name: Create Windows release ZIP
+        run: |
+          cd release-assets
+          zip -0 -r "POS-System-${GITHUB_REF_NAME#v}-win-x64.zip" "POS-System-${GITHUB_REF_NAME}-win-x64"
+          ls -lh
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
