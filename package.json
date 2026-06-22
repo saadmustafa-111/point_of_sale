@@ -5,7 +5,7 @@
   "main": "electron/main.js",
   "scripts": {
     "dev": "concurrently -k -n API,WEB,ELECTRON \"npm run backend:dev\" \"npm run dev:renderer\" \"wait-on tcp:localhost:3000 http://localhost:5173 && npm run dev:electron\"",
-    "dev:electron": "cross-env NODE_ENV=development electron .",
+    "dev:electron": "node scripts/start-dev-electron.mjs",
     "dev:renderer": "npm --prefix apps/renderer run dev",
     "backend:dev": "npm --prefix apps/backend run start:dev",
     "backend:build": "npm --prefix apps/backend run build",
