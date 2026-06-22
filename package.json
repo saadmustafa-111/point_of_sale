@@ -1,6 +1,6 @@
 {
   "name": "pos-system",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "Professional POS System for Home Appliances Shop",
   "main": "electron/main.js",
   "scripts": {
