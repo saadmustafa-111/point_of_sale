@@ -19,6 +19,7 @@ const DEFAULT_API_URL = `http://${DEFAULT_SERVER_HOSTNAME}:${BACKEND_PORT}/api/v
 
 let mainWindow;
 let backendProcess = null;
+let backendStartPromise = null;
 let freshDatabaseCreated = false;
 
 // ── Database path setup ───────────────────────────────────────────────────────
@@ -264,8 +265,8 @@ function runPrismaMigrations(dbPath) {
 
 // ── Start NestJS backend ──────────────────────────────────────────────────────
 function startBackend() {
-  if (backendProcess) return;
-  if (isDev) return;
+  if (backendProcess) return backendProcess;
+  if (isDev) return null;
 
   const backendDir = path.join(process.resourcesPath, 'backend');
   const dbPath = getDbPath();
@@ -289,8 +290,18 @@ function startBackend() {
 
   backendProcess.stdout.on('data', (d) => console.log('[Backend]', d.toString().trim()));
   backendProcess.stderr.on('data', (d) => console.error('[Backend ERR]', d.toString().trim()));
-  backendProcess.on('exit', (code) => console.log('[Backend] Exited with code', code));
-  backendProcess.on('error', (err) => console.error('[Backend] Failed to start:', err));
+  backendProcess.on('exit', (code) => {
+    console.log('[Backend] Exited with code', code);
+    backendProcess = null;
+    backendStartPromise = null;
+  });
+  backendProcess.on('error', (err) => {
+    console.error('[Backend] Failed to start:', err);
+    backendProcess = null;
+    backendStartPromise = null;
+  });
+
+  return backendProcess;
 }
 
 function stopBackend() {
@@ -298,21 +309,70 @@ function stopBackend() {
     backendProcess.kill();
     backendProcess = null;
   }
+  backendStartPromise = null;
 }
 
 // ── Wait for backend to accept connections ────────────────────────────────────
-function waitForBackend(retries = 40) {
+function waitForBackend({ retries = 90, intervalMs = 1000 } = {}) {
   return new Promise((resolve, reject) => {
+    let lastError = null;
     const attempt = (n) => {
-      http.get(`http://localhost:${BACKEND_PORT}/api/v1/health`, () => {
-        resolve();
-      }).on('error', () => {
-        if (n <= 0) return reject(new Error('Backend did not start in time'));
-        setTimeout(() => attempt(n - 1), 500);
+      const req = http.get(`http://127.0.0.1:${BACKEND_PORT}/api/v1/health`, (res) => {
+        res.resume();
+        if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
+          resolve();
+          return;
+        }
+        lastError = new Error(`Backend health returned HTTP ${res.statusCode}`);
+        if (n <= 0) return reject(lastError);
+        setTimeout(() => attempt(n - 1), intervalMs);
+      });
+      req.setTimeout(5000, () => {
+        req.destroy(new Error('Backend health check timed out'));
+      });
+      req.on('error', (err) => {
+        lastError = err;
+        if (n <= 0) {
+          const message = lastError?.message ? `Backend did not start in time: ${lastError.message}` : 'Backend did not start in time';
+          return reject(new Error(message));
+        }
+        setTimeout(() => attempt(n - 1), intervalMs);
       });
     };
     attempt(retries);
   });
+}
+
+async function ensureBackendReady() {
+  if (isDev) {
+    return { ok: true };
+  }
+
+  if (backendStartPromise) return backendStartPromise;
+
+  backendStartPromise = (async () => {
+    try {
+      await waitForBackend({ retries: 2, intervalMs: 250 });
+      return { ok: true };
+    } catch (_) {
+      // The backend is not already listening, so start the bundled runtime.
+    }
+
+    try {
+      freshDatabaseCreated = ensureDatabase();
+      startBackend();
+      await waitForBackend();
+      return { ok: true };
+    } catch (err) {
+      const message = err?.message || 'Backend did not start in time';
+      console.error('[Backend] Readiness failed:', message);
+      return { ok: false, error: message };
+    } finally {
+      backendStartPromise = null;
+    }
+  })();
+
+  return backendStartPromise;
 }
 
 function testConnection(apiUrl) {
@@ -395,20 +455,16 @@ app.whenReady().then(async () => {
   const appMode = config.appMode;
 
   if (appMode === 'server') {
-    freshDatabaseCreated = ensureDatabase();
-    startBackend();
     if (!config.apiUrl) {
       writeConfig({ apiUrl: `http://localhost:${BACKEND_PORT}/api/v1` });
     }
-  }
-
-  if (!isDev && appMode === 'server') {
-    try {
-      await waitForBackend();
-      console.log('[App] Backend ready');
-    } catch (e) {
-      console.error('[App] Backend failed to start:', e.message);
-    }
+    ensureBackendReady().then((result) => {
+      if (result.ok) {
+        console.log('[App] Backend ready');
+      } else {
+        console.error('[App] Backend failed to start:', result.error);
+      }
+    });
   }
 
   createWindow();
@@ -454,14 +510,22 @@ ipcMain.handle('set-app-mode', async (_, appMode) => {
   const config = writeConfig(nextConfig);
 
   if (appMode === 'server') {
-    freshDatabaseCreated = ensureDatabase();
-    startBackend();
-    if (!isDev) await waitForBackend();
+    const backend = await ensureBackendReady();
+    return {
+      mode: config.appMode,
+      apiUrl: config.apiUrl,
+      backendReady: backend.ok,
+      error: backend.error,
+    };
   } else {
     stopBackend();
   }
 
-  return config.appMode;
+  return {
+    mode: config.appMode,
+    apiUrl: config.apiUrl,
+    backendReady: true,
+  };
 });
 
 ipcMain.handle('get-server-info', () => getServerInfo());

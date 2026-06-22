@@ -23,11 +23,18 @@ declare global {
     status?: number;
   };
 
+  type AppModeResult = {
+    mode: 'server' | 'client';
+    apiUrl?: string;
+    backendReady: boolean;
+    error?: string;
+  };
+
   type ElectronPOSApi = {
     getApiUrl: () => Promise<string | null>;
     setApiUrl: (apiUrl: string) => Promise<string>;
     getAppMode: () => Promise<'server' | 'client' | null>;
-    setAppMode: (mode: 'server' | 'client') => Promise<'server' | 'client'>;
+    setAppMode: (mode: 'server' | 'client') => Promise<AppModeResult>;
     getServerInfo: () => Promise<{
       hostname: string;
       defaultHostname: string;

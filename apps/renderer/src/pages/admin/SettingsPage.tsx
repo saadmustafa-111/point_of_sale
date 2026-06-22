@@ -38,6 +38,7 @@ export default function SettingsPage() {
   const [serverInfo, setServerInfo] = useState<any>(null);
   const [connectionStatus, setConnectionStatus] = useState('');
   const [testingConnection, setTestingConnection] = useState(false);
+  const [savingMode, setSavingMode] = useState<'server' | 'client' | null>(null);
   const [printers, setPrinters] = useState<Array<{ name: string; displayName?: string; isDefault?: boolean }>>([]);
   const [printerSettings, setPrinterSettings] = useState({ defaultPrinter: '', silentPrint: false, autoPrint: false });
   const [testingPrint, setTestingPrint] = useState(false);
@@ -120,6 +121,13 @@ export default function SettingsPage() {
     }
   };
 
+  const getModeErrorMessage = (err: any, fallback: string) => {
+    const message = err?.message || fallback;
+    return message.includes('Backend did not start')
+      ? 'Backend is taking longer than expected to start. Please wait a few seconds and try again.'
+      : message;
+  };
+
   const saveApiUrl = async () => {
     const api = window.electronAPI || window.electron;
     if (!api) {
@@ -141,17 +149,27 @@ export default function SettingsPage() {
   const changeMode = async (mode: 'server' | 'client') => {
     const api = window.electronAPI || window.electron;
     if (!api) return;
+    setSavingMode(mode);
+    setConnectionStatus('');
     try {
-      const savedMode = await api.setAppMode(mode);
-      const savedUrl = await api.getApiUrl();
-      setAppMode(savedMode);
+      const result = await api.setAppMode(mode);
+      const savedUrl = result.apiUrl || await api.getApiUrl();
+      setAppMode(result.mode);
       if (savedUrl) {
         setApiUrl(savedUrl);
         setApiBaseUrl(savedUrl);
       }
+      if (!result.backendReady) {
+        const message = result.error || 'Mode was saved, but the backend is not ready yet. Please restart the app or try again.';
+        setConnectionStatus(message);
+        toast.error(message);
+        return;
+      }
       toast.success(`${mode === 'server' ? 'Server' : 'Client'} mode saved`);
     } catch (err: any) {
-      toast.error(err?.message || 'Failed to change app mode');
+      toast.error(getModeErrorMessage(err, 'Failed to change app mode'));
+    } finally {
+      setSavingMode(null);
     }
   };
 
@@ -308,11 +326,11 @@ export default function SettingsPage() {
       <section className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <Header icon={Monitor} title="App Mode" />
         <div className="p-6 flex flex-wrap gap-3">
-          <button onClick={() => changeMode('server')} className={`px-5 py-2.5 rounded-xl text-sm font-semibold border ${appMode === 'server' ? 'bg-blue-600 text-white border-blue-600' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}>
-            Server / Main Computer
+          <button onClick={() => changeMode('server')} disabled={savingMode !== null} className={`px-5 py-2.5 rounded-xl text-sm font-semibold border disabled:opacity-60 ${appMode === 'server' ? 'bg-blue-600 text-white border-blue-600' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}>
+            {savingMode === 'server' ? 'Saving Server Mode...' : 'Server / Main Computer'}
           </button>
-          <button onClick={() => changeMode('client')} className={`px-5 py-2.5 rounded-xl text-sm font-semibold border ${appMode === 'client' ? 'bg-blue-600 text-white border-blue-600' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}>
-            Client / Cashier Computer
+          <button onClick={() => changeMode('client')} disabled={savingMode !== null} className={`px-5 py-2.5 rounded-xl text-sm font-semibold border disabled:opacity-60 ${appMode === 'client' ? 'bg-blue-600 text-white border-blue-600' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}>
+            {savingMode === 'client' ? 'Saving Client Mode...' : 'Client / Cashier Computer'}
           </button>
         </div>
       </section>

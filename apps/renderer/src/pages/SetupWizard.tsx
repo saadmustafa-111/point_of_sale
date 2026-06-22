@@ -8,6 +8,13 @@ const SERVER_LOCAL_URL = 'http://localhost:3000/api/v1';
 
 type Mode = 'server' | 'client';
 
+function getModeErrorMessage(err: any, fallback: string) {
+  const message = err?.message || fallback;
+  return message.includes('Backend did not start')
+    ? 'Backend is taking longer than expected to start. Please wait a few seconds and try again.'
+    : message;
+}
+
 export default function SetupWizard({ onComplete }: { onComplete: () => void }) {
   const [selectedMode, setSelectedMode] = useState<Mode | null>(null);
   const [serverUrl, setServerUrl] = useState(DEFAULT_CLIENT_URL);
@@ -51,13 +58,17 @@ export default function SetupWizard({ onComplete }: { onComplete: () => void }) 
 
     setSaving(true);
     try {
-      await window.electron.setAppMode('server');
-      const apiUrl = await window.electron.getApiUrl();
+      const result = await window.electron.setAppMode('server');
+      const apiUrl = result.apiUrl || await window.electron.getApiUrl();
       setApiBaseUrl(apiUrl || SERVER_LOCAL_URL);
+      if (!result.backendReady) {
+        toast.error(result.error || 'Server mode was saved, but the backend is not ready yet. Please restart the app or try again.');
+        return;
+      }
       toast.success('Server mode enabled');
       onComplete();
     } catch (err: any) {
-      toast.error(err?.message || 'Failed to enable server mode');
+      toast.error(getModeErrorMessage(err, 'Failed to enable server mode'));
     } finally {
       setSaving(false);
     }
@@ -75,13 +86,17 @@ export default function SetupWizard({ onComplete }: { onComplete: () => void }) 
 
     setSaving(true);
     try {
-      await window.electron.setAppMode('client');
+      const result = await window.electron.setAppMode('client');
+      if (!result.backendReady) {
+        toast.error(result.error || 'Client mode was saved, but the local backend could not be stopped.');
+        return;
+      }
       const savedUrl = await window.electron.setApiUrl(serverUrl);
       setApiBaseUrl(savedUrl);
       toast.success('Client mode enabled');
       onComplete();
     } catch (err: any) {
-      toast.error(err?.message || 'Failed to save client connection');
+      toast.error(getModeErrorMessage(err, 'Failed to save client connection'));
     } finally {
       setSaving(false);
     }
