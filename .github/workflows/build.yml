@@ -1,6 +1,9 @@
 name: Build POS Apps
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
