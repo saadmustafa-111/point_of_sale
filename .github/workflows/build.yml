@@ -74,4 +74,4 @@ jobs:
           name: windows-unpacked
           path: dist-electron/win-unpacked/**
           if-no-files-found: error
-          compression-level: 0
+          compression-level: 9

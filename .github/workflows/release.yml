@@ -94,7 +94,7 @@ jobs:
           name: windows-unpacked
           path: dist-electron/win-unpacked/**
           if-no-files-found: error
-          compression-level: 0
+          compression-level: 9
           retention-days: 90
 
   build-macos:
@@ -180,7 +180,7 @@ jobs:
       - name: Create Windows release ZIP
         run: |
           cd release-assets
-          zip -0 -r "POS-System-${GITHUB_REF_NAME#v}-win-x64.zip" "POS-System-${GITHUB_REF_NAME}-win-x64"
+          zip -9 -r "POS-System-${GITHUB_REF_NAME#v}-win-x64.zip" "POS-System-${GITHUB_REF_NAME}-win-x64"
           ls -lh
 
       - name: Publish GitHub Release
