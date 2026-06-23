@@ -15,6 +15,7 @@ function runtimeEnv() {
     CI: '1',
     HOME: homeDir,
     NO_COLOR: '1',
+    PRISMA_CLI_BINARY_TARGETS: process.env.PRISMA_CLI_BINARY_TARGETS || 'darwin,darwin-arm64,windows',
     PRISMA_ENGINES_CACHE_DIR: prismaCacheDir,
     PRISMA_HIDE_UPDATE_MESSAGE: '1',
     XDG_CACHE_HOME: join(rootDir, 'release', '.cache'),
@@ -50,6 +51,8 @@ function generatePrismaClient() {
     process.exit(1);
   }
 
+  ensurePrismaEngines();
+
   console.log(`[backend-runtime] node ${relative(runtimeDir, prismaCli)} generate --schema prisma/schema.prisma`);
   const result = spawnSync(process.execPath, [prismaCli, 'generate', '--schema', 'prisma/schema.prisma'], {
     cwd: runtimeDir,
@@ -65,6 +68,53 @@ function generatePrismaClient() {
 
     process.exit(result.status || 1);
   }
+
+  verifyPrismaEngines();
+}
+
+function ensurePrismaEngines() {
+  const enginesDir = join(runtimeDir, 'node_modules', '@prisma', 'engines');
+  const postinstall = join(enginesDir, 'dist', 'scripts', 'postinstall.js');
+
+  if (!existsSync(postinstall)) {
+    console.warn('[backend-runtime] Prisma engines postinstall script missing; engine download skipped');
+    return;
+  }
+
+  console.log('[backend-runtime] Downloading Prisma engines for darwin, darwin-arm64, and windows');
+  const result = spawnSync(process.execPath, [postinstall], {
+    cwd: enginesDir,
+    env: runtimeEnv(),
+    stdio: 'inherit',
+  });
+
+  if (result.status !== 0) {
+    console.warn(`[backend-runtime] Prisma engines postinstall exited with ${result.status}`);
+  }
+}
+
+function verifyPrismaEngines() {
+  const enginesDir = join(runtimeDir, 'node_modules', '@prisma', 'engines');
+  const clientDir = join(runtimeDir, 'node_modules', '.prisma', 'client');
+  const required = [
+    join(enginesDir, 'schema-engine-darwin'),
+    join(enginesDir, 'schema-engine-darwin-arm64'),
+    join(enginesDir, 'schema-engine-windows.exe'),
+    join(clientDir, 'libquery_engine-darwin.dylib.node'),
+    join(clientDir, 'libquery_engine-darwin-arm64.dylib.node'),
+    join(clientDir, 'query_engine-windows.dll.node'),
+  ];
+
+  const missing = required.filter((filePath) => !existsSync(filePath));
+  if (missing.length > 0) {
+    console.error('[backend-runtime] Missing Prisma engine binaries required for packaged apps:');
+    for (const filePath of missing) {
+      console.error(`  - ${relative(runtimeDir, filePath)}`);
+    }
+    process.exit(1);
+  }
+
+  console.log('[backend-runtime] Verified Prisma engines for macOS (Intel + Apple Silicon) and Windows');
 }
 
 function copyRequiredFiles() {

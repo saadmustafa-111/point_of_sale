@@ -22,6 +22,31 @@ let backendProcess = null;
 let backendStartPromise = null;
 let freshDatabaseCreated = false;
 
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function errorPage(title, message) {
+  const safeTitle = escapeHtml(title);
+  const safeMessage = escapeHtml(message);
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${safeTitle}</title>
+    <style>body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f1f5f9;color:#0f172a;display:flex;min-height:100vh;align-items:center;justify-content:center}.box{max-width:720px;background:white;border:1px solid #cbd5e1;border-radius:12px;padding:28px;box-shadow:0 12px 40px rgba(15,23,42,.12)}h1{margin:0 0 12px;font-size:22px}pre{white-space:pre-wrap;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;color:#334155}</style>
+    </head><body><div class="box"><h1>${safeTitle}</h1><pre>${safeMessage}</pre></div></body></html>`;
+}
+
+function showRendererError(title, err) {
+  const message = err?.message || String(err || 'Unknown renderer load error');
+  console.error(`[Renderer] ${title}:`, message);
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  mainWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(errorPage(title, message))}`).catch(() => undefined);
+  if (!mainWindow.isVisible()) mainWindow.show();
+}
+
 // ── Database path setup ───────────────────────────────────────────────────────
 function getDbPath() {
   const userData = app.getPath('userData');
@@ -212,16 +237,84 @@ function getServerInfo() {
   };
 }
 
+function getBundledBackendDir() {
+  return path.join(process.resourcesPath, 'backend');
+}
+
+function resolvePrismaSchemaEngine(backendDir) {
+  const enginesDir = path.join(backendDir, 'node_modules', '@prisma', 'engines');
+  const candidates = [];
+
+  if (process.platform === 'darwin') {
+    candidates.push(
+      process.arch === 'arm64' ? 'schema-engine-darwin-arm64' : 'schema-engine-darwin',
+      'schema-engine-darwin-arm64',
+      'schema-engine-darwin',
+    );
+  } else if (process.platform === 'win32') {
+    candidates.push('schema-engine-windows.exe', 'schema-engine-windows');
+  } else {
+    throw new Error(`Unsupported platform for Prisma migrations: ${process.platform}`);
+  }
+
+  for (const name of [...new Set(candidates)]) {
+    const fullPath = path.join(enginesDir, name);
+    if (fs.existsSync(fullPath)) return fullPath;
+  }
+
+  throw new Error(
+    `Prisma schema engine not found in ${enginesDir} for ${process.platform}/${process.arch}`,
+  );
+}
+
+function resolvePrismaQueryEngine(backendDir) {
+  const names = [];
+
+  if (process.platform === 'darwin') {
+    names.push(
+      process.arch === 'arm64' ? 'libquery_engine-darwin-arm64.dylib.node' : 'libquery_engine-darwin.dylib.node',
+      'libquery_engine-darwin-arm64.dylib.node',
+      'libquery_engine-darwin.dylib.node',
+    );
+  } else if (process.platform === 'win32') {
+    names.push('query_engine-windows.dll.node', 'libquery_engine-windows.dll.node');
+  } else {
+    throw new Error(`Unsupported platform for Prisma query engine: ${process.platform}`);
+  }
+
+  const dirs = [
+    path.join(backendDir, 'node_modules', '.prisma', 'client'),
+    path.join(backendDir, 'node_modules', '@prisma', 'engines'),
+    path.join(backendDir, 'node_modules', 'prisma'),
+  ];
+
+  for (const name of [...new Set(names)]) {
+    for (const dir of dirs) {
+      const fullPath = path.join(dir, name);
+      if (fs.existsSync(fullPath)) return fullPath;
+    }
+  }
+
+  throw new Error(
+    `Prisma query engine not found for ${process.platform}/${process.arch} in bundled backend`,
+  );
+}
+
+function getPrismaRuntimeEnv(backendDir) {
+  const schemaEngine = resolvePrismaSchemaEngine(backendDir);
+  const queryEngine = resolvePrismaQueryEngine(backendDir);
+
+  return {
+    PRISMA_SCHEMA_ENGINE_BINARY: schemaEngine,
+    PRISMA_QUERY_ENGINE_LIBRARY: queryEngine,
+  };
+}
+
 function ensureDatabase() {
   const dbDest = getDbPath();
   const created = !fs.existsSync(dbDest);
 
   fs.mkdirSync(path.dirname(dbDest), { recursive: true });
-
-  if (created) {
-    fs.closeSync(fs.openSync(dbDest, 'a'));
-    console.log('[DB] Created empty production database at', dbDest);
-  }
 
   if (!isDev) {
     runPrismaMigrations(dbDest);
@@ -231,7 +324,7 @@ function ensureDatabase() {
 }
 
 function runPrismaMigrations(dbPath) {
-  const backendDir = path.join(process.resourcesPath, 'backend');
+  const backendDir = getBundledBackendDir();
   const schemaPath = path.join(backendDir, 'prisma', 'schema.prisma');
   const prismaCli = path.join(backendDir, 'node_modules', 'prisma', 'build', 'index.js');
 
@@ -243,11 +336,15 @@ function runPrismaMigrations(dbPath) {
     throw new Error(`Prisma CLI not found at ${prismaCli}`);
   }
 
+  const prismaEngines = getPrismaRuntimeEnv(backendDir);
+
   console.log('[DB] Running Prisma migrations for', dbPath);
+  console.log('[DB] Using schema engine', prismaEngines.PRISMA_SCHEMA_ENGINE_BINARY);
   const result = spawnSync(process.execPath, [prismaCli, 'migrate', 'deploy', '--schema', schemaPath], {
     cwd: backendDir,
     env: {
       ...process.env,
+      ...prismaEngines,
       DATABASE_URL: getDatabaseUrl(dbPath),
       NODE_ENV: 'production',
       ELECTRON_RUN_AS_NODE: '1',
@@ -259,7 +356,10 @@ function runPrismaMigrations(dbPath) {
   if (result.stderr) console.error('[DB ERR]', result.stderr.trim());
 
   if (result.status !== 0) {
-    throw new Error(`Prisma migrations failed with exit code ${result.status}`);
+    const details = [result.stderr, result.stdout].filter(Boolean).join('\n').trim();
+    throw new Error(
+      details ? `Prisma migrations failed: ${details}` : `Prisma migrations failed with exit code ${result.status}`,
+    );
   }
 }
 
@@ -268,11 +368,12 @@ function startBackend() {
   if (backendProcess) return backendProcess;
   if (isDev) return null;
 
-  const backendDir = path.join(process.resourcesPath, 'backend');
+  const backendDir = getBundledBackendDir();
   const dbPath = getDbPath();
 
   const env = {
     ...process.env,
+    ...getPrismaRuntimeEnv(backendDir),
     DATABASE_URL: getDatabaseUrl(dbPath),
     JWT_SECRET: 'pos_super_secret_2026_change_me',
     PORT: String(BACKEND_PORT),
@@ -431,11 +532,25 @@ function createWindow() {
     },
   });
 
+  mainWindow.webContents.on('console-message', (_, level, message, line, sourceId) => {
+    console.log(`[Renderer console:${level}] ${message} (${sourceId}:${line})`);
+  });
+  mainWindow.webContents.on('render-process-gone', (_, details) => {
+    showRendererError('Renderer process crashed', new Error(details.reason || 'Renderer process exited'));
+  });
+  mainWindow.webContents.on('did-fail-load', (_, errorCode, errorDescription, validatedURL) => {
+    showRendererError('Renderer failed to load', new Error(`${errorDescription} (${errorCode})\n${validatedURL}`));
+  });
+
   if (isDev) {
     mainWindow.loadURL(RENDERER_URL);
     mainWindow.webContents.openDevTools();
   } else {
-    mainWindow.loadFile(RENDERER_BUILD);
+    if (!fs.existsSync(RENDERER_BUILD)) {
+      showRendererError('Renderer build not found', new Error(RENDERER_BUILD));
+    } else {
+      mainWindow.loadFile(RENDERER_BUILD).catch((err) => showRendererError('Renderer failed to load', err));
+    }
   }
 
   mainWindow.once('ready-to-show', () => {
