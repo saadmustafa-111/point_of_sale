@@ -22,11 +22,27 @@ export class ReportsController {
     return this.service.monthlySales(+year || new Date().getFullYear(), +month || new Date().getMonth() + 1);
   }
 
+  @Get('weekly')
+  weekly(@Query('endDate') endDate?: string) { return this.service.weeklySales(endDate); }
+
   @Get('top-products')
   topProducts(@Query('limit') limit?: string) { return this.service.topSellingProducts(+limit || 10); }
 
   @Get('low-stock')
   lowStock() { return this.service.lowStockReport(); }
+
+  @Get('inventory-summary')
+  inventorySummary() { return this.service.inventorySummary(); }
+
+  @Get('expense-summary')
+  expenseSummary(@Query('startDate') startDate?: string, @Query('endDate') endDate?: string) {
+    return this.service.expenseSummary(startDate, endDate);
+  }
+
+  @Get('profit-summary')
+  profitSummary(@Query('startDate') startDate?: string, @Query('endDate') endDate?: string) {
+    return this.service.profitSummary(startDate, endDate);
+  }
 
   @Get('cashier-sales')
   cashierSales(@Query('startDate') s?: string, @Query('endDate') e?: string) {

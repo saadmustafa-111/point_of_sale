@@ -22,6 +22,7 @@ import InstallmentsPage   from './pages/admin/InstallmentsPage';
 import ReturnsPage        from './pages/admin/ReturnsPage';
 import SuppliersPage      from './pages/admin/SuppliersPage';
 import PurchasesPage      from './pages/admin/PurchasesPage';
+import ExpensesPage       from './pages/admin/ExpensesPage';
 
 // Cashier pages
 import POSPage            from './pages/cashier/POSPage';
@@ -117,6 +118,7 @@ export default function App() {
         <Route path="returns"   element={<PrivateRoute adminOnly><ReturnsPage /></PrivateRoute>} />
         <Route path="suppliers" element={<PrivateRoute adminOnly><SuppliersPage /></PrivateRoute>} />
         <Route path="purchases" element={<PrivateRoute adminOnly><PurchasesPage /></PrivateRoute>} />
+        <Route path="expenses"  element={<PrivateRoute adminOnly><ExpensesPage /></PrivateRoute>} />
         <Route path="reports"   element={<PrivateRoute adminOnly><ReportsPage /></PrivateRoute>} />
         <Route path="settings"  element={<PrivateRoute adminOnly><SettingsPage /></PrivateRoute>} />
 

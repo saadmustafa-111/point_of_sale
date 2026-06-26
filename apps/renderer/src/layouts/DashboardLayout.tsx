@@ -5,6 +5,7 @@ import {
   Users, ShoppingCart, BarChart2, Settings,
   Store, Receipt, UserPlus, LogOut, ChevronRight,
   CreditCard, RefreshCw, Building2, ShoppingBag,
+  ReceiptText,
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { settingsService } from '../services';
@@ -21,6 +22,7 @@ const adminLinks = [
   { to: '/returns',   icon: RefreshCw,    label: 'Returns/Exchange' },
   { to: '/suppliers', icon: Building2,    label: 'Suppliers' },
   { to: '/purchases', icon: ShoppingBag,  label: 'Purchase Ledger' },
+  { to: '/expenses',  icon: ReceiptText,   label: 'Expenses' },
   { to: '/users',     icon: Users,        label: 'Users' },
   { to: '/reports',   icon: BarChart2,       label: 'Reports' },
   { to: '/settings',  icon: Settings,        label: 'Settings' },

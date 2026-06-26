@@ -64,12 +64,23 @@ export const inventoryService = {
 
 export const reportsService = {
   daily: (date: string)         => api.get('/reports/daily', { params: { date } }).then((r) => r.data),
+  weekly: (endDate?: string)    => api.get('/reports/weekly', { params: { endDate } }).then((r) => r.data),
   monthly: (year: number, month: number) =>
     api.get('/reports/monthly', { params: { year, month } }).then((r) => r.data),
   topProducts: (limit?: number) => api.get('/reports/top-products', { params: { limit } }).then((r) => r.data),
   lowStock: ()                  => api.get('/reports/low-stock').then((r) => r.data),
+  inventorySummary: ()          => api.get('/reports/inventory-summary').then((r) => r.data),
+  expenseSummary: (s?: string, e?: string) => api.get('/reports/expense-summary', { params: { startDate: s, endDate: e } }).then((r) => r.data),
+  profitSummary: (s?: string, e?: string) => api.get('/reports/profit-summary', { params: { startDate: s, endDate: e } }).then((r) => r.data),
   cashierSales: (s?: string, e?: string) =>
     api.get('/reports/cashier-sales', { params: { startDate: s, endDate: e } }).then((r) => r.data),
+};
+
+export const expensesService = {
+  getAll: (s?: string, e?: string, category?: string) => api.get('/expenses', { params: { startDate: s, endDate: e, category } }).then((r) => r.data),
+  getSummary: (s?: string, e?: string) => api.get('/expenses/summary', { params: { startDate: s, endDate: e } }).then((r) => r.data),
+  create: (data: any) => api.post('/expenses', data).then((r) => r.data),
+  delete: (id: string) => api.delete(`/expenses/${id}`).then((r) => r.data),
 };
 
 export const settingsService = {

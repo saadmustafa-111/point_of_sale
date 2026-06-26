@@ -38,9 +38,9 @@ export default function InventoryPage() {
   const openModal = () => { setForm({ productId: '', type: 'STOCK_IN', quantity: '', reason: '' }); setModal(true); };
 
   const allLogs = logs as any[];
-  const stockInCount  = allLogs.filter(l => l.type === 'STOCK_IN').length;
-  const stockOutCount = allLogs.filter(l => l.type === 'STOCK_OUT').length;
-  const adjCount      = allLogs.filter(l => l.type === 'ADJUSTMENT').length;
+  const stockInCount  = allLogs.filter(l => l.type === 'STOCK_IN').reduce((sum, l) => sum + (l.quantity || 0), 0);
+  const stockOutCount = allLogs.filter(l => l.type === 'STOCK_OUT').reduce((sum, l) => sum + (l.quantity || 0), 0);
+  const adjustmentCount = allLogs.filter(l => l.type === 'ADJUSTMENT').length;
 
   const filtered = allLogs.filter(l => {
     const matchType = typeFilter === 'ALL' || l.type === typeFilter;
@@ -106,7 +106,7 @@ export default function InventoryPage() {
           </div>
           <div>
             <p className="text-xs text-slate-500 font-medium">Adjustments</p>
-            <p className="text-2xl font-bold text-amber-600">{adjCount}</p>
+            <p className="text-2xl font-bold text-amber-600">{adjustmentCount}</p>
           </div>
         </div>
       </div>

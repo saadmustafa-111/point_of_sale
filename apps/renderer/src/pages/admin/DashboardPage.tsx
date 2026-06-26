@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { reportsService, salesService } from '../../services';
 import {
   ShoppingCart, TrendingUp, AlertTriangle, Package,
-  ArrowUpRight, ReceiptText, Users, Clock,
+  ArrowUpRight, ReceiptText, Users, Clock, Boxes, Scale,
 } from 'lucide-react';
 
 // ── Stat Card ────────────────────────────────────────────────────────────────
@@ -74,8 +74,15 @@ export default function DashboardPage() {
   // Use LOCAL date (not UTC) so the backend queries the correct calendar day
   const today  = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
   const greeting = now.getHours() < 12 ? 'Good morning' : now.getHours() < 17 ? 'Good afternoon' : 'Good evening';
+  const weekStartDate = new Date(now);
+  weekStartDate.setDate(weekStartDate.getDate() - 6);
+  const weekStart = `${weekStartDate.getFullYear()}-${String(weekStartDate.getMonth()+1).padStart(2,'0')}-${String(weekStartDate.getDate()).padStart(2,'0')}`;
 
   const { data: daily }    = useQuery({ queryKey: ['daily', today], queryFn: () => reportsService.daily(today) });
+  const { data: weekly }   = useQuery({ queryKey: ['weekly', today], queryFn: () => reportsService.weekly(today) });
+  const { data: dailyExpenses } = useQuery({ queryKey: ['expenseSummary', today], queryFn: () => reportsService.expenseSummary(today, today) });
+  const { data: weeklyExpenses } = useQuery({ queryKey: ['expenseSummaryWeek', weekStart, today], queryFn: () => reportsService.expenseSummary(weekStart, today) });
+  const { data: inventory } = useQuery({ queryKey: ['inventorySummary'], queryFn: reportsService.inventorySummary });
   const { data: lowStock } = useQuery({ queryKey: ['lowStock'], queryFn: reportsService.lowStock });
   const { data: topProds } = useQuery({ queryKey: ['topProds'], queryFn: () => reportsService.topProducts(5) });
   const { data: allSales = [] } = useQuery({ queryKey: ['sales'], queryFn: salesService.getAll });
@@ -112,9 +119,9 @@ export default function DashboardPage() {
         />
         <StatCard
           icon={TrendingUp}
-          label="Today's Revenue"
-          value={`PKR ${(daily?.total ?? 0).toLocaleString()}`}
-          sub={`Disc: PKR ${(daily?.discount ?? 0).toLocaleString()}`}
+          label="Today's Net Profit"
+          value={`PKR ${(((daily?.grossProfit ?? 0) - (dailyExpenses?.totalExpenses ?? 0))).toLocaleString()}`}
+          sub={`Revenue: PKR ${(daily?.total ?? 0).toLocaleString()}`}
           gradient="bg-gradient-to-br from-emerald-600 to-emerald-500"
           iconBg="bg-emerald-700"
         />
@@ -131,6 +138,41 @@ export default function DashboardPage() {
           label="Top Product"
           value={topProds?.[0]?.product?.name ?? 'No data'}
           sub={topProds?.[0] ? `${topProds[0].totalQty} units sold` : 'Make your first sale'}
+          gradient="bg-gradient-to-br from-purple-600 to-violet-500"
+          iconBg="bg-purple-700"
+        />
+      </div>
+
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+        <StatCard
+          icon={TrendingUp}
+          label="Weekly Net Profit"
+          value={`PKR ${(((weekly?.grossProfit ?? 0) - (weeklyExpenses?.totalExpenses ?? 0))).toLocaleString()}`}
+          sub={`7-day revenue: PKR ${(weekly?.total ?? 0).toLocaleString()}`}
+          gradient="bg-gradient-to-br from-teal-600 to-cyan-500"
+          iconBg="bg-teal-700"
+        />
+        <StatCard
+          icon={Scale}
+          label="Today's COGS"
+          value={`PKR ${(daily?.cogs ?? 0).toLocaleString()}`}
+          sub="Cost of goods sold"
+          gradient="bg-gradient-to-br from-slate-700 to-slate-600"
+          iconBg="bg-slate-800"
+        />
+        <StatCard
+          icon={Boxes}
+          label="Inventory Value"
+          value={`PKR ${(inventory?.inventoryValue ?? 0).toLocaleString()}`}
+          sub={`${inventory?.totalUnits ?? 0} units / ${inventory?.totalProducts ?? 0} products`}
+          gradient="bg-gradient-to-br from-blue-600 to-cyan-500"
+          iconBg="bg-blue-700"
+        />
+        <StatCard
+          icon={Package}
+          label="Sold from Stock"
+          value={inventory?.soldUnits ?? 0}
+          sub={`Stock in: ${inventory?.stockIn ?? 0} · Stock out: ${inventory?.stockOut ?? 0}`}
           gradient="bg-gradient-to-br from-purple-600 to-violet-500"
           iconBg="bg-purple-700"
         />
@@ -238,8 +280,8 @@ export default function DashboardPage() {
               { label: 'Transactions',       value: daily?.count ?? 0,                          color: 'bg-blue-500' },
               { label: 'Items Sold',         value: daily?.itemsSold ?? 0,                      color: 'bg-emerald-500' },
               { label: 'Total Revenue',      value: `PKR ${(daily?.total ?? 0).toLocaleString()}`, color: 'bg-purple-500' },
-              { label: 'Total Discount',     value: `PKR ${(daily?.discount ?? 0).toLocaleString()}`, color: 'bg-amber-500' },
-              { label: 'Net (after disc.)',  value: `PKR ${((daily?.total ?? 0) - (daily?.discount ?? 0)).toLocaleString()}`, color: 'bg-blue-600' },
+              { label: 'Gross Profit',       value: `PKR ${(daily?.grossProfit ?? 0).toLocaleString()}`, color: 'bg-emerald-600' },
+              { label: 'Inventory Units',    value: inventory?.totalUnits ?? 0,                 color: 'bg-cyan-500' },
             ].map(row => (
               <div key={row.label} className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">

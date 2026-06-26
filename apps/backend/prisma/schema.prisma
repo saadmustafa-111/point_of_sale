@@ -29,6 +29,7 @@ model User {
 
   sales         Sale[]
   inventoryLogs InventoryLog[]
+  expenses      Expense[]
 
   @@map("users")
 }
@@ -165,6 +166,28 @@ model InventoryLog {
   performedBy User    @relation(fields: [performedById], references: [id])
 
   @@map("inventory_logs")
+}
+
+// ── Expenses ────────────────────────────────────────────────────────────────
+
+model Expense {
+  id            String   @id @default(cuid())
+  expenseNumber String   @unique
+  title         String
+  category      String
+  amount        Float
+  expenseDate   DateTime
+  paymentMethod String   @default("CASH")
+  notes         String?
+  receiptNumber String?
+  vendor       String?
+  createdById   String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  createdBy User @relation(fields: [createdById], references: [id])
+
+  @@map("expenses")
 }
 
 // ── Installment Plans ────────────────────────────────────────────────────────

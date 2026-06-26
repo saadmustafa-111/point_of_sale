@@ -16,6 +16,7 @@ import { ReturnsModule } from './returns/returns.module';
 import { ServiceModule } from './service/service.module';
 import { SuppliersModule } from './suppliers/suppliers.module';
 import { PurchasesModule } from './purchases/purchases.module';
+import { ExpensesModule } from './expenses/expenses.module';
 import { HealthModule } from './health/health.module';
 import { SetupModule } from './setup/setup.module';
 
@@ -40,6 +41,7 @@ import { SetupModule } from './setup/setup.module';
     ServiceModule,
     SuppliersModule,
     PurchasesModule,
+    ExpensesModule,
   ],
 })
 export class AppModule {}

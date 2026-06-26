@@ -6,18 +6,25 @@ import { BarChart2, Calendar, TrendingUp, Package, Users } from 'lucide-react';
 
 export default function ReportsPage() {
   const today = new Date().toISOString().split('T')[0];
-  const [tab, setTab] = useState<'daily' | 'monthly' | 'top' | 'cashier'>('daily');
+  const [tab, setTab] = useState<'daily' | 'weekly' | 'monthly' | 'top' | 'cashier'>('daily');
   const [date, setDate] = useState(today);
   const [year, setYear] = useState(new Date().getFullYear());
   const [month, setMonth] = useState(new Date().getMonth() + 1);
+  const weekStartDate = new Date(date);
+  weekStartDate.setDate(weekStartDate.getDate() - 6);
+  const weekStart = weekStartDate.toISOString().split('T')[0];
 
   const { data: daily }   = useQuery({ queryKey: ['rep-daily', date],        queryFn: () => reportsService.daily(date),          enabled: tab === 'daily'   });
+  const { data: dailyExpenses } = useQuery({ queryKey: ['rep-expenses-daily', date], queryFn: () => reportsService.expenseSummary(date, date), enabled: tab === 'daily' });
+  const { data: weekly }  = useQuery({ queryKey: ['rep-weekly', date],       queryFn: () => reportsService.weekly(date),         enabled: tab === 'weekly'  });
+  const { data: weeklyExpenses } = useQuery({ queryKey: ['rep-expenses-week', weekStart, date], queryFn: () => reportsService.expenseSummary(weekStart, date), enabled: tab === 'weekly' });
   const { data: monthly } = useQuery({ queryKey: ['rep-monthly', year, month], queryFn: () => reportsService.monthly(year, month), enabled: tab === 'monthly' });
   const { data: top }     = useQuery({ queryKey: ['rep-top'],                queryFn: () => reportsService.topProducts(10),       enabled: tab === 'top'     });
   const { data: cashier } = useQuery({ queryKey: ['rep-cashier'],            queryFn: () => reportsService.cashierSales(),        enabled: tab === 'cashier' });
 
   const tabs = [
     { key: 'daily',   label: 'Daily',        icon: Calendar   },
+    { key: 'weekly',  label: 'Weekly',       icon: TrendingUp },
     { key: 'monthly', label: 'Monthly',       icon: TrendingUp },
     { key: 'top',     label: 'Top Products',  icon: Package    },
     { key: 'cashier', label: 'Cashier-wise',  icon: Users      },
@@ -56,9 +63,11 @@ export default function ReportsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {[
                 { label: 'Total Orders',    value: daily.count,                                          color: 'text-slate-800',   bg: 'bg-blue-50',   iconBg: 'text-blue-600' },
-                { label: 'Revenue',         value: `PKR ${(daily.total ?? 0).toLocaleString()}`,         color: 'text-emerald-600', bg: 'bg-emerald-50', iconBg: 'text-emerald-600' },
-                { label: 'Avg Order Value', value: `PKR ${daily.count ? Math.round(daily.total / daily.count).toLocaleString() : 0}`, color: 'text-purple-600', bg: 'bg-purple-50', iconBg: 'text-purple-600' },
-              ].map(stat => (
+              { label: 'Revenue',         value: `PKR ${(daily.total ?? 0).toLocaleString()}`,         color: 'text-emerald-600', bg: 'bg-emerald-50', iconBg: 'text-emerald-600' },
+              { label: 'Expenses',        value: `PKR ${(dailyExpenses?.totalExpenses ?? 0).toLocaleString()}`, color: 'text-rose-600', bg: 'bg-rose-50', iconBg: 'text-rose-600' },
+              { label: 'Net Profit',      value: `PKR ${((daily?.grossProfit ?? 0) - (dailyExpenses?.totalExpenses ?? 0)).toLocaleString()}`, color: 'text-purple-600', bg: 'bg-purple-50', iconBg: 'text-purple-600' },
+              { label: 'Avg Order Value', value: `PKR ${daily.count ? Math.round(daily.total / daily.count).toLocaleString() : 0}`, color: 'text-purple-600', bg: 'bg-purple-50', iconBg: 'text-purple-600' },
+            ].map(stat => (
                 <div key={stat.label} className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
                   <p className="text-xs text-slate-500 font-semibold uppercase tracking-wide mb-1">{stat.label}</p>
                   <p className={`text-3xl font-extrabold ${stat.color}`}>{stat.value}</p>
@@ -91,6 +100,29 @@ export default function ReportsPage() {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Weekly */}
+      {tab === 'weekly' && (
+        <div className="space-y-5">
+          <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+            <p className="text-xs text-slate-500 font-semibold uppercase tracking-wide mb-1">Last 7 Days Profit</p>
+            <p className="text-3xl font-extrabold text-emerald-600">PKR {(((weekly?.grossProfit ?? 0) - (weeklyExpenses?.totalExpenses ?? 0))).toLocaleString()}</p>
+            <p className="text-sm text-slate-500 mt-1">Revenue: PKR {(weekly?.total ?? 0).toLocaleString()} · COGS: PKR {(weekly?.cogs ?? 0).toLocaleString()} · Expenses: PKR {(weeklyExpenses?.totalExpenses ?? 0).toLocaleString()}</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {[
+              { label: 'Sales Count', value: weekly?.count ?? 0, color: 'text-slate-800' },
+              { label: 'Revenue', value: `PKR ${(weekly?.total ?? 0).toLocaleString()}`, color: 'text-blue-600' },
+              { label: 'Gross Profit', value: `PKR ${(weekly?.grossProfit ?? 0).toLocaleString()}`, color: 'text-emerald-600' },
+            ].map(stat => (
+              <div key={stat.label} className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+                <p className="text-xs text-slate-500 font-semibold uppercase tracking-wide mb-1">{stat.label}</p>
+                <p className={`text-3xl font-extrabold ${stat.color}`}>{stat.value}</p>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
