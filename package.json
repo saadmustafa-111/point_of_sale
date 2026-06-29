@@ -14,7 +14,7 @@
     "build:renderer:ci": "npm --prefix apps/renderer run build:ci",
     "prepare:backend-runtime": "node scripts/prepare-backend-runtime.mjs",
     "release:size-report": "node scripts/print-release-size-report.mjs",
-    "build:electron:win": "electron-builder --win --publish never",
+    "build:electron:win": "electron-builder --win --x64 --dir --publish never",
     "build:electron:mac": "electron-builder --mac --publish never",
     "backend:migrate": "npm --prefix apps/backend run prisma:migrate",
     "backend:seed": "npm --prefix apps/backend run prisma:seed",
