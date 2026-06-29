@@ -4,9 +4,52 @@ import { Role } from '../common/enums';
 import { FirstAdminDto } from './dto/first-admin.dto';
 import * as bcrypt from 'bcryptjs';
 
+const DEFAULT_ADMIN_USERNAME = 'admin';
+const DEFAULT_ADMIN_PASSWORD = '123456';
+const DEFAULT_ADMIN_NAME = 'System Administrator';
+const DEFAULT_POS_NAME = 'Home Appliances POS';
+const DEFAULT_SHOP_NAME = 'My Home Appliances Shop';
+
 @Injectable()
 export class SetupService {
   constructor(private prisma: PrismaService) {}
+
+  async ensureDefaultAdminAccount() {
+    const adminCount = await this.prisma.user.count({ where: { role: Role.ADMIN } });
+    if (adminCount > 0) return;
+
+    const password = await bcrypt.hash(DEFAULT_ADMIN_PASSWORD, 10);
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.user.create({
+        data: {
+          username: DEFAULT_ADMIN_USERNAME,
+          password,
+          fullName: DEFAULT_ADMIN_NAME,
+          role: Role.ADMIN,
+          isActive: true,
+        },
+      });
+
+      const settings = [
+        { key: 'pos_name', value: DEFAULT_POS_NAME },
+        { key: 'shop_name', value: DEFAULT_SHOP_NAME },
+        { key: 'shop_phone', value: '' },
+        { key: 'currency', value: 'PKR' },
+        { key: 'receipt_footer', value: 'Thank you for shopping with us!' },
+        { key: 'tax_rate', value: '0' },
+        { key: 'receipt_format', value: 'thermal_80' },
+      ];
+
+      for (const setting of settings) {
+        await tx.setting.upsert({
+          where: { key: setting.key },
+          update: {},
+          create: setting,
+        });
+      }
+    });
+  }
 
   async removeDemoUsersForFreshProductionDb() {
     if (process.env.NODE_ENV !== 'production' || process.env.POS_FRESH_DB !== '1') return;
@@ -105,7 +148,7 @@ export class SetupService {
 
     return {
       success: true,
-      needsFirstAdmin: true,
+      needsFirstAdmin: false,
       message: 'All application data has been deleted.',
     };
   }

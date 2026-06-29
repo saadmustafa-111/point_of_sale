@@ -11,5 +11,6 @@ export class SetupModule implements OnApplicationBootstrap {
 
   async onApplicationBootstrap() {
     await this.setupService.removeDemoUsersForFreshProductionDb();
+    await this.setupService.ensureDefaultAdminAccount();
   }
 }

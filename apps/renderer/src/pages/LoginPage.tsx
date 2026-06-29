@@ -55,12 +55,12 @@ export default function LoginPage() {
 
             <div className="grid gap-4">
               <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-blue-200">Local app</p>
-                <p className="mt-1 text-sm text-slate-200">Runs on this computer with its own local database.</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-blue-200">Fast access</p>
+                <p className="mt-1 text-sm text-slate-200">Open the admin workspace quickly and manage products, billing, receipts, and reporting in one place.</p>
               </div>
               <div className="rounded-xl border border-white/10 bg-white/5 p-4">
                 <p className="text-xs font-semibold uppercase tracking-wide text-emerald-200">Admin secure</p>
-                <p className="mt-1 text-sm text-slate-200">Only the admin account can access the dashboard and system controls.</p>
+                <p className="mt-1 text-sm text-slate-200">Sign in first, then change the password from Users to match the customer’s preferred credentials.</p>
               </div>
             </div>
           </section>
@@ -72,7 +72,7 @@ export default function LoginPage() {
                   <ShieldCheck className="h-7 w-7" />
                 </div>
                 <h2 className="text-2xl font-bold text-slate-900">Admin Sign In</h2>
-                <p className="mt-1 text-sm text-slate-500">Use your admin username and password to continue.</p>
+                <p className="mt-1 text-sm text-slate-500">Use the admin credentials to continue and update them after first login if needed.</p>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-5">
@@ -120,8 +120,8 @@ export default function LoginPage() {
               </form>
 
               <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4 lg:hidden">
-                <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">Local app</p>
-                <p className="mt-1 text-sm text-slate-600">This POS runs on this computer with a local database and admin-only access.</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">Admin access</p>
+                <p className="mt-1 text-sm text-slate-600">Sign in with the admin account provided during delivery, then update the password after first login if needed.</p>
               </div>
             </div>
           </section>
