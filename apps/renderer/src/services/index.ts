@@ -10,6 +10,7 @@ export const authService = {
 export const setupService = {
   status: () => api.get('/setup/status').then((r) => r.data),
   createFirstAdmin: (data: any) => api.post('/setup/first-admin', data).then((r) => r.data),
+  reset: () => api.delete('/setup/reset').then((r) => r.data),
 };
 
 export const usersService = {

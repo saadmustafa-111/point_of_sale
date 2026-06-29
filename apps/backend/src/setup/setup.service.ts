@@ -15,12 +15,7 @@ export class SetupService {
     if (saleCount > 0) return;
 
     await this.prisma.user.deleteMany({
-      where: {
-        OR: [
-          { username: 'admin' },
-          { username: 'cashier1' },
-        ],
-      },
+      where: { role: { not: Role.ADMIN } },
     });
   }
 
@@ -79,5 +74,39 @@ export class SetupService {
 
     const { password: _, ...safeUser } = user;
     return safeUser;
+  }
+
+  async resetApplicationData() {
+    return this.prisma.$transaction(async (tx) => {
+      await tx.installmentPayment.deleteMany({});
+      await tx.installmentPlan.deleteMany({});
+      await tx.returnItem.deleteMany({});
+      await tx.return.deleteMany({});
+      await tx.servicePart.deleteMany({});
+      await tx.serviceCharge.deleteMany({});
+      await tx.serviceJob.deleteMany({});
+      await tx.creditTransaction.deleteMany({});
+      await tx.customerCredit.deleteMany({});
+      await tx.supplierPayment.deleteMany({});
+      await tx.purchaseOrderItem.deleteMany({});
+      await tx.purchaseOrder.deleteMany({});
+      await tx.saleItem.deleteMany({});
+      await tx.sale.deleteMany({});
+      await tx.expense.deleteMany({});
+      await tx.inventoryLog.deleteMany({});
+      await tx.product.deleteMany({});
+      await tx.customer.deleteMany({});
+      await tx.supplier.deleteMany({});
+      await tx.brand.deleteMany({});
+      await tx.category.deleteMany({});
+      await tx.setting.deleteMany({});
+      await tx.user.deleteMany({});
+    });
+
+    return {
+      success: true,
+      needsFirstAdmin: true,
+      message: 'All application data has been deleted.',
+    };
   }
 }

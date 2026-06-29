@@ -1,10 +1,8 @@
 import {
-  Injectable, NotFoundException, BadRequestException, ForbiddenException,
+  Injectable, NotFoundException, BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateSaleDto } from './dto/sale.dto';
-import { Role } from '../common/enums';
-
 @Injectable()
 export class SalesService {
   constructor(private prisma: PrismaService) {}
@@ -25,26 +23,31 @@ export class SalesService {
     },
   };
 
-  async findAll(userId: string, userRole: Role) {
+  async findAll() {
     return this.prisma.sale.findMany({
-      where: userRole === Role.CASHIER ? { cashierId: userId } : undefined,
       include: this.saleInclude,
       orderBy: { createdAt: 'desc' },
     });
   }
 
-  async findOne(id: string, userId: string, userRole: Role) {
+  async findOne(id: string) {
     const sale = await this.prisma.sale.findUnique({ where: { id }, include: this.saleInclude });
     if (!sale) throw new NotFoundException('Sale not found');
-    if (userRole === Role.CASHIER && sale.cashierId !== userId)
-      throw new ForbiddenException('Access denied');
     return sale;
   }
 
   private async generateInvoiceNumber(): Promise<string> {
     const year = new Date().getFullYear();
-    const count = await this.prisma.sale.count();
-    const seq = String(count + 1).padStart(5, '0');
+    const latestSale = await this.prisma.sale.findFirst({
+      where: { invoiceNumber: { startsWith: `INV-${year}-` } },
+      orderBy: { createdAt: 'desc' },
+      select: { invoiceNumber: true },
+    });
+
+    const lastSequence = latestSale?.invoiceNumber
+      ? Number(latestSale.invoiceNumber.split('-').pop() || 0)
+      : 0;
+    const seq = String(lastSequence + 1).padStart(5, '0');
     return `INV-${year}-${seq}`;
   }
 
@@ -64,9 +67,16 @@ export class SalesService {
     const subtotal = dto.items.reduce((sum, i) => sum + i.unitPrice * i.quantity - (i.discount || 0), 0);
     const discountAmount = dto.discount || 0;
     const taxableAmount = subtotal - discountAmount;
+    if (taxableAmount < 0) {
+      throw new BadRequestException('Discount cannot exceed subtotal');
+    }
+
     const taxAmount = +(taxableAmount * (taxRate / 100)).toFixed(2);
     const total = +(taxableAmount + taxAmount).toFixed(2);
-    const amountPaid = dto.amountPaid ?? (dto.paymentMethod === 'CASH' ? total : total);
+    const amountPaid = dto.amountPaid ?? total;
+    if (dto.paymentMethod === 'CASH' && amountPaid < total) {
+      throw new BadRequestException('Amount paid cannot be less than total for cash sales');
+    }
     const changeGiven = +(amountPaid - total).toFixed(2);
 
     const invoiceNumber = await this.generateInvoiceNumber();

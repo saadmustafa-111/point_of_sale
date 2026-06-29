@@ -16,13 +16,7 @@ function normalizePrintPayload(payloadOrHtml, options = {}) {
 }
 
 const electronAPI = {
-  /** Fetch the backend API base URL stored in the main process */
   getApiUrl: () => ipcRenderer.invoke('get-api-url'),
-  setApiUrl: (apiUrl) => ipcRenderer.invoke('set-api-url', apiUrl),
-  getAppMode: () => ipcRenderer.invoke('get-app-mode'),
-  setAppMode: (mode) => ipcRenderer.invoke('set-app-mode', mode),
-  getServerInfo: () => ipcRenderer.invoke('get-server-info'),
-  testConnection: (apiUrl) => ipcRenderer.invoke('test-connection', apiUrl),
 
   /** Send HTML string to native print dialog */
   printReceipt: (payloadOrHtml, options) => ipcRenderer.invoke('print-receipt', normalizePrintPayload(payloadOrHtml, options)),

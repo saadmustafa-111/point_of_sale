@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoginDto } from './dto/login.dto';
 import * as bcrypt from 'bcryptjs';
+import { Role } from '../common/enums';
 
 @Injectable()
 export class AuthService {
@@ -18,6 +19,9 @@ export class AuthService {
 
     if (!user || !user.isActive) {
       throw new UnauthorizedException('Invalid credentials');
+    }
+    if (user.role !== Role.ADMIN) {
+      throw new UnauthorizedException('Admin access only');
     }
 
     const isMatch = await bcrypt.compare(dto.password, user.password);

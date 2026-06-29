@@ -3,10 +3,8 @@
 const { app, BrowserWindow, ipcMain, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
-const os = require('os');
 const { spawn, spawnSync } = require('child_process');
 const http = require('http');
-const https = require('https');
 
 const isDev = process.env.NODE_ENV === 'development';
 const RENDERER_URL = 'http://localhost:5173';
@@ -14,8 +12,7 @@ const RENDERER_BUILD = isDev
   ? path.join(__dirname, '../apps/renderer/dist/index.html')
   : path.join(process.resourcesPath, 'renderer', 'dist', 'index.html');
 const BACKEND_PORT = 3000;
-const DEFAULT_SERVER_HOSTNAME = 'SHOP-SERVER';
-const DEFAULT_API_URL = `http://${DEFAULT_SERVER_HOSTNAME}:${BACKEND_PORT}/api/v1`;
+const LOCAL_API_URL = `http://127.0.0.1:${BACKEND_PORT}/api/v1`;
 
 let mainWindow;
 let backendProcess = null;
@@ -61,13 +58,6 @@ function getConfigPath() {
   return path.join(app.getPath('userData'), 'pos-config.json');
 }
 
-function normalizeApiUrl(url) {
-  if (!url || typeof url !== 'string') return '';
-  const trimmed = url.trim().replace(/\/+$/, '');
-  if (!trimmed) return '';
-  return trimmed.endsWith('/api/v1') ? trimmed : `${trimmed}/api/v1`;
-}
-
 function readConfig() {
   try {
     const file = getConfigPath();
@@ -84,7 +74,6 @@ function writeConfig(nextConfig) {
     ...readConfig(),
     ...nextConfig,
   };
-  if (config.apiUrl) config.apiUrl = normalizeApiUrl(config.apiUrl);
   fs.writeFileSync(getConfigPath(), JSON.stringify(config, null, 2));
   return config;
 }
@@ -207,34 +196,6 @@ async function printHtmlPayload(rawPayload) {
   } finally {
     if (printWin && !printWin.isDestroyed()) printWin.close();
   }
-}
-
-function getLanAddresses() {
-  const interfaces = os.networkInterfaces();
-  const addresses = [];
-  for (const values of Object.values(interfaces)) {
-    for (const item of values || []) {
-      if (item.family === 'IPv4' && !item.internal) {
-        addresses.push(item.address);
-      }
-    }
-  }
-  return addresses;
-}
-
-function getServerInfo() {
-  const hostname = os.hostname();
-  const lanIps = getLanAddresses();
-  const lanUrls = lanIps.map((ip) => `http://${ip}:${BACKEND_PORT}/api/v1`);
-  return {
-    hostname,
-    defaultHostname: DEFAULT_SERVER_HOSTNAME,
-    port: BACKEND_PORT,
-    hostnameUrl: `http://${hostname}:${BACKEND_PORT}/api/v1`,
-    shopServerUrl: DEFAULT_API_URL,
-    lanIps,
-    lanUrls,
-  };
 }
 
 function getBundledBackendDir() {
@@ -414,7 +375,7 @@ function stopBackend() {
 }
 
 // ── Wait for backend to accept connections ────────────────────────────────────
-function waitForBackend({ retries = 90, intervalMs = 1000 } = {}) {
+function waitForBackend({ retries = process.platform === 'win32' ? 180 : 90, intervalMs = 1000, requestTimeoutMs = 5000 } = {}) {
   return new Promise((resolve, reject) => {
     let lastError = null;
     const attempt = (n) => {
@@ -428,7 +389,7 @@ function waitForBackend({ retries = 90, intervalMs = 1000 } = {}) {
         if (n <= 0) return reject(lastError);
         setTimeout(() => attempt(n - 1), intervalMs);
       });
-      req.setTimeout(5000, () => {
+      req.setTimeout(requestTimeoutMs, () => {
         req.destroy(new Error('Backend health check timed out'));
       });
       req.on('error', (err) => {
@@ -462,7 +423,11 @@ async function ensureBackendReady() {
     try {
       freshDatabaseCreated = ensureDatabase();
       startBackend();
-      await waitForBackend();
+      await waitForBackend({
+        retries: process.platform === 'win32' ? 240 : 90,
+        intervalMs: 1000,
+        requestTimeoutMs: process.platform === 'win32' ? 8000 : 5000,
+      });
       return { ok: true };
     } catch (err) {
       const message = err?.message || 'Backend did not start in time';
@@ -474,44 +439,6 @@ async function ensureBackendReady() {
   })();
 
   return backendStartPromise;
-}
-
-function testConnection(apiUrl) {
-  const base = normalizeApiUrl(apiUrl);
-  if (!base) return Promise.resolve({ ok: false, error: 'API URL is required' });
-
-  return new Promise((resolve) => {
-    let healthUrl;
-    try {
-      healthUrl = new URL(`${base}/health`);
-    } catch (_) {
-      resolve({ ok: false, error: 'Invalid API URL' });
-      return;
-    }
-
-    const client = healthUrl.protocol === 'https:' ? https : http;
-    const req = client.get(healthUrl, { timeout: 5000 }, (res) => {
-      let body = '';
-      res.on('data', (chunk) => { body += chunk; });
-      res.on('end', () => {
-        if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
-          try {
-            resolve({ ok: true, status: res.statusCode, data: JSON.parse(body) });
-          } catch (_) {
-            resolve({ ok: true, status: res.statusCode });
-          }
-        } else {
-          resolve({ ok: false, status: res.statusCode, error: `HTTP ${res.statusCode}` });
-        }
-      });
-    });
-
-    req.on('timeout', () => {
-      req.destroy();
-      resolve({ ok: false, error: 'Connection timed out' });
-    });
-    req.on('error', (err) => resolve({ ok: false, error: err.message }));
-  });
 }
 
 // ── Create Electron window ────────────────────────────────────────────────────
@@ -566,21 +493,13 @@ function createWindow() {
 
 // ── App lifecycle ─────────────────────────────────────────────────────────────
 app.whenReady().then(async () => {
-  const config = readConfig();
-  const appMode = config.appMode;
-
-  if (appMode === 'server') {
-    if (!config.apiUrl) {
-      writeConfig({ apiUrl: `http://localhost:${BACKEND_PORT}/api/v1` });
+  ensureBackendReady().then((result) => {
+    if (result.ok) {
+      console.log('[App] Backend ready');
+    } else {
+      console.error('[App] Backend failed to start:', result.error);
     }
-    ensureBackendReady().then((result) => {
-      if (result.ok) {
-        console.log('[App] Backend ready');
-      } else {
-        console.error('[App] Backend failed to start:', result.error);
-      }
-    });
-  }
+  });
 
   createWindow();
 
@@ -600,51 +519,8 @@ app.on('before-quit', () => {
 
 // ── IPC handlers ──────────────────────────────────────────────────────────────
 ipcMain.handle('get-api-url', () => {
-  const config = readConfig();
-  return config.apiUrl || null;
+  return LOCAL_API_URL;
 });
-
-ipcMain.handle('set-api-url', (_, apiUrl) => {
-  const config = writeConfig({ apiUrl: normalizeApiUrl(apiUrl) });
-  return config.apiUrl;
-});
-
-ipcMain.handle('get-app-mode', () => readConfig().appMode || null);
-ipcMain.handle('set-app-mode', async (_, appMode) => {
-  if (!['server', 'client'].includes(appMode)) {
-    throw new Error('Invalid app mode');
-  }
-
-  const nextConfig = { appMode };
-  if (appMode === 'server') {
-    nextConfig.apiUrl = `http://localhost:${BACKEND_PORT}/api/v1`;
-  } else if (!readConfig().apiUrl) {
-    nextConfig.apiUrl = DEFAULT_API_URL;
-  }
-
-  const config = writeConfig(nextConfig);
-
-  if (appMode === 'server') {
-    const backend = await ensureBackendReady();
-    return {
-      mode: config.appMode,
-      apiUrl: config.apiUrl,
-      backendReady: backend.ok,
-      error: backend.error,
-    };
-  } else {
-    stopBackend();
-  }
-
-  return {
-    mode: config.appMode,
-    apiUrl: config.apiUrl,
-    backendReady: true,
-  };
-});
-
-ipcMain.handle('get-server-info', () => getServerInfo());
-ipcMain.handle('test-connection', (_, apiUrl) => testConnection(apiUrl || readConfig().apiUrl || DEFAULT_API_URL));
 
 ipcMain.handle('get-printers', async () => {
   if (!mainWindow) return [];

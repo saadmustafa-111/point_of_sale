@@ -16,17 +16,6 @@ async function main() {
             role: client_1.Role.ADMIN,
         },
     });
-    const cashierPass = await bcrypt.hash('cashier123', 10);
-    await prisma.user.upsert({
-        where: { username: 'cashier1' },
-        update: {},
-        create: {
-            username: 'cashier1',
-            password: cashierPass,
-            fullName: 'Ali Cashier',
-            role: client_1.Role.CASHIER,
-        },
-    });
     const cats = ['Air Conditioners', 'Refrigerators', 'Washing Machines', 'TVs', 'Small Appliances'];
     for (const name of cats) {
         await prisma.category.upsert({ where: { name }, update: {}, create: { name } });
@@ -48,7 +37,6 @@ async function main() {
     }
     console.log('✅ Seeding complete');
     console.log('   Admin  → username: admin    password: admin123');
-    console.log('   Cashier→ username: cashier1 password: cashier123');
 }
 main()
     .catch((e) => { console.error(e); process.exit(1); })

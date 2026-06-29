@@ -13,6 +13,7 @@ import toast from 'react-hot-toast';
 
 const adminLinks = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/pos',       icon: Store,          label: 'Point of Sale' },
   { to: '/products',  icon: Package,         label: 'Products' },
   { to: '/categories',icon: Tag,             label: 'Categories' },
   { to: '/brands',    icon: Layers,          label: 'Brands' },
@@ -28,16 +29,9 @@ const adminLinks = [
   { to: '/settings',  icon: Settings,        label: 'Settings' },
 ];
 
-const cashierLinks = [
-  { to: '/pos',       icon: Store,    label: 'Point of Sale' },
-  { to: '/my-sales',  icon: Receipt,  label: 'My Sales' },
-  { to: '/customers', icon: UserPlus, label: 'Customers' },
-];
-
 export default function DashboardLayout() {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
-  const links = user?.role === 'ADMIN' ? adminLinks : cashierLinks;
   const { data: branding } = useQuery({
     queryKey: ['branding'],
     queryFn: settingsService.getPublicBranding,
@@ -65,7 +59,7 @@ export default function DashboardLayout() {
         </div>
 
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
-          {links.map(({ to, icon: Icon, label }) => (
+          {adminLinks.map(({ to, icon: Icon, label }) => (
             <NavLink
               key={to}
               to={to}
@@ -85,12 +79,12 @@ export default function DashboardLayout() {
 
         <div className="px-3 py-4 border-t border-border">
           <div className="flex items-center gap-3 px-3 py-2 mb-1">
-<div className="w-7 h-7 bg-primary-100 rounded-full flex items-center justify-center text-xs text-primary-700 font-bold uppercase">
+            <div className="w-7 h-7 bg-primary-100 rounded-full flex items-center justify-center text-xs text-primary-700 font-bold uppercase">
               {user?.fullName[0]}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-slate-700 truncate">{user?.fullName}</p>
-              <p className="text-xs text-slate-500 capitalize">{user?.role?.toLowerCase()}</p>
+              <p className="text-xs text-slate-500">Admin</p>
             </div>
           </div>
           <button onClick={handleLogout} className="btn-ghost w-full justify-start text-red-500 hover:text-red-700 hover:bg-red-50">

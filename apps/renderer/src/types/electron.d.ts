@@ -23,28 +23,8 @@ declare global {
     status?: number;
   };
 
-  type AppModeResult = {
-    mode: 'server' | 'client';
-    apiUrl?: string;
-    backendReady: boolean;
-    error?: string;
-  };
-
   type ElectronPOSApi = {
     getApiUrl: () => Promise<string | null>;
-    setApiUrl: (apiUrl: string) => Promise<string>;
-    getAppMode: () => Promise<'server' | 'client' | null>;
-    setAppMode: (mode: 'server' | 'client') => Promise<AppModeResult>;
-    getServerInfo: () => Promise<{
-      hostname: string;
-      defaultHostname: string;
-      port: number;
-      hostnameUrl: string;
-      shopServerUrl: string;
-      lanIps: string[];
-      lanUrls: string[];
-    }>;
-    testConnection: (apiUrl: string) => Promise<{ ok: boolean; error?: string; status?: number; data?: any }>;
     printReceipt: (payload: PrintReceiptPayload | string, options?: { silent?: boolean; deviceName?: string; printerName?: string; width?: '58mm' | '80mm' | 'a4'; copies?: number }) => Promise<{ success: boolean; error?: string; reason?: string }>;
     getPrinters: () => Promise<PrinterInfo[]>;
     getPrinterSettings: () => Promise<PrinterSettings>;

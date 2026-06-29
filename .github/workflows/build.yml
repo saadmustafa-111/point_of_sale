@@ -58,13 +58,13 @@ jobs:
       - shell: pwsh
         run: |
           Write-Host "START BUILD $(Get-Date -Format o)"
-          Write-Host "COMMAND: node node_modules/electron-builder/cli.js --win --x64 --dir"
+          Write-Host "COMMAND: npm run build:win"
           $env:DEBUG = "electron-builder,electron-builder:*"
-          & node node_modules/electron-builder/cli.js --win --x64 --dir
+          & npm run build:win
           $exitCode = $LASTEXITCODE
           Write-Host "END BUILD $(Get-Date -Format o) exit code: $exitCode"
           if ($exitCode -ne 0) {
-            throw "Windows unpacked build failed. Command: node node_modules/electron-builder/cli.js --win --x64 --dir. Exit code: $exitCode"
+            throw "Windows ZIP build failed. Command: npm run build:win. Exit code: $exitCode"
           }
       - if: always()
         continue-on-error: true
@@ -74,7 +74,7 @@ jobs:
         run: dir dist-electron
       - uses: actions/upload-artifact@v4
         with:
-          name: windows-unpacked
-          path: dist-electron/win-unpacked/**
+          name: windows-zip
+          path: dist-electron/*.zip
           if-no-files-found: error
           compression-level: 9

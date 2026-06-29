@@ -51,17 +51,17 @@ jobs:
         continue-on-error: true
         run: node scripts/print-release-size-report.mjs
 
-      - name: Build Windows unpacked app
+      - name: Build Windows ZIP
         shell: pwsh
         run: |
           Write-Host "START BUILD $(Get-Date -Format o)"
-          Write-Host "COMMAND: node node_modules/electron-builder/cli.js --win --x64 --dir"
+          Write-Host "COMMAND: npm run build:win"
           $env:DEBUG = "electron-builder,electron-builder:*"
-          & node node_modules/electron-builder/cli.js --win --x64 --dir
+          & npm run build:win
           $exitCode = $LASTEXITCODE
           Write-Host "END BUILD $(Get-Date -Format o) exit code: $exitCode"
           if ($exitCode -ne 0) {
-            throw "Windows unpacked build failed. Command: node node_modules/electron-builder/cli.js --win --x64 --dir. Exit code: $exitCode"
+            throw "Windows ZIP build failed. Command: npm run build:win. Exit code: $exitCode"
           }
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -81,18 +81,19 @@ jobs:
             Write-Host "dist-electron folder does not exist"
           }
 
-          if (Test-Path "dist-electron/win-unpacked/POS System.exe") {
-            Write-Host "Windows unpacked app is ready:"
-            Get-ChildItem "dist-electron/win-unpacked" | Select-Object -First 20
+          $zip = Get-ChildItem "dist-electron/*.zip" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($zip) {
+            Write-Host "Windows ZIP is ready:"
+            Write-Host $zip.FullName
           } else {
-            Write-Host "Windows unpacked app is missing"
+            Write-Host "Windows ZIP is missing"
           }
 
-      - name: Upload Windows unpacked app
+      - name: Upload Windows ZIP
         uses: actions/upload-artifact@v4
         with:
-          name: windows-unpacked
-          path: dist-electron/win-unpacked/**
+          name: windows-zip
+          path: dist-electron/*.zip
           if-no-files-found: error
           compression-level: 9
           retention-days: 90
@@ -165,23 +166,17 @@ jobs:
       - build-macos
 
     steps:
-      - name: Download Windows unpacked app
+      - name: Download Windows ZIP
         uses: actions/download-artifact@v4
         with:
-          name: windows-unpacked
-          path: release-assets/POS-System-${{ github.ref_name }}-win-x64
+          name: windows-zip
+          path: release-assets
 
       - name: Download Mac DMG
         uses: actions/download-artifact@v4
         with:
           name: mac-dmg
           path: release-assets
-
-      - name: Create Windows release ZIP
-        run: |
-          cd release-assets
-          zip -9 -r "POS-System-${GITHUB_REF_NAME#v}-win-x64.zip" "POS-System-${GITHUB_REF_NAME}-win-x64"
-          ls -lh
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2

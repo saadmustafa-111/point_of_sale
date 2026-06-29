@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { settingsService, salesService } from '../../services';
-import { getApiBaseUrl, setApiBaseUrl } from '../../services/api';
+import { settingsService, salesService, setupService } from '../../services';
+import { useAuthStore } from '../../store/authStore';
 import toast from 'react-hot-toast';
 import {
-  AlertTriangle, DatabaseBackup, Monitor, Printer,
-  Save, Server, ShieldCheck, Trash2,
+  AlertTriangle, DatabaseBackup, Printer,
+  MonitorSmartphone, Save, ShieldCheck, Trash2,
 } from 'lucide-react';
 
 const BUSINESS_FIELDS = [
@@ -33,16 +33,12 @@ export default function SettingsPage() {
   const [values, setValues] = useState<Record<string, string>>({});
   const [initialised, setInitialised] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
-  const [appMode, setAppMode] = useState<'server' | 'client' | null>(null);
-  const [apiUrl, setApiUrl] = useState(getApiBaseUrl());
-  const [serverInfo, setServerInfo] = useState<any>(null);
-  const [connectionStatus, setConnectionStatus] = useState('');
-  const [testingConnection, setTestingConnection] = useState(false);
-  const [savingMode, setSavingMode] = useState<'server' | 'client' | null>(null);
+  const [confirmReset, setConfirmReset] = useState(false);
   const [printers, setPrinters] = useState<Array<{ name: string; displayName?: string; isDefault?: boolean }>>([]);
   const [printerSettings, setPrinterSettings] = useState({ defaultPrinter: '', silentPrint: false, autoPrint: false });
   const [testingPrint, setTestingPrint] = useState(false);
   const queryClient = useQueryClient();
+  const logout = useAuthStore((state) => state.logout);
 
   const { isLoading, data: settingsData } = useQuery({
     queryKey: ['settings'],
@@ -67,9 +63,6 @@ export default function SettingsPage() {
   useEffect(() => {
     const api = window.electronAPI || window.electron;
     if (!api) return;
-    api.getAppMode().then(setAppMode).catch(() => undefined);
-    api.getApiUrl().then((url) => { if (url) setApiUrl(url); }).catch(() => undefined);
-    api.getServerInfo().then(setServerInfo).catch(() => undefined);
     api.getPrinters().then(setPrinters).catch(() => undefined);
     api.getPrinterSettings().then(setPrinterSettings).catch(() => undefined);
   }, []);
@@ -96,82 +89,19 @@ export default function SettingsPage() {
     onError: () => toast.error('Failed to clear sales data'),
   });
 
-  const testConnection = async () => {
-    setTestingConnection(true);
-    setConnectionStatus('');
-    try {
-      const api = window.electronAPI || window.electron;
-      const result = api
-        ? await api.testConnection(apiUrl)
-        : { ok: (await fetch(`${apiUrl.replace(/\/+$/, '')}/health`)).ok };
-      if (result.ok) {
-        setConnectionStatus('Connection successful');
-        toast.success('Connection successful');
-      } else {
-        const message = result.error || 'Connection failed';
-        setConnectionStatus(message);
-        toast.error(message);
-      }
-    } catch (err: any) {
-      const message = err?.message || 'Connection failed';
-      setConnectionStatus(message);
-      toast.error(message);
-    } finally {
-      setTestingConnection(false);
-    }
-  };
-
-  const getModeErrorMessage = (err: any, fallback: string) => {
-    const message = err?.message || fallback;
-    return message.includes('Backend did not start')
-      ? 'Backend is taking longer than expected to start. Please wait a few seconds and try again.'
-      : message;
-  };
-
-  const saveApiUrl = async () => {
-    const api = window.electronAPI || window.electron;
-    if (!api) {
-      setApiBaseUrl(apiUrl);
-      toast.success('API URL updated for this session');
-      return;
-    }
-
-    try {
-      const savedUrl = await api.setApiUrl(apiUrl);
-      setApiUrl(savedUrl);
-      setApiBaseUrl(savedUrl);
-      toast.success('API URL saved on this computer');
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to save API URL');
-    }
-  };
-
-  const changeMode = async (mode: 'server' | 'client') => {
-    const api = window.electronAPI || window.electron;
-    if (!api) return;
-    setSavingMode(mode);
-    setConnectionStatus('');
-    try {
-      const result = await api.setAppMode(mode);
-      const savedUrl = result.apiUrl || await api.getApiUrl();
-      setAppMode(result.mode);
-      if (savedUrl) {
-        setApiUrl(savedUrl);
-        setApiBaseUrl(savedUrl);
-      }
-      if (!result.backendReady) {
-        const message = result.error || 'Mode was saved, but the backend is not ready yet. Please restart the app or try again.';
-        setConnectionStatus(message);
-        toast.error(message);
-        return;
-      }
-      toast.success(`${mode === 'server' ? 'Server' : 'Client'} mode saved`);
-    } catch (err: any) {
-      toast.error(getModeErrorMessage(err, 'Failed to change app mode'));
-    } finally {
-      setSavingMode(null);
-    }
-  };
+  const resetMut = useMutation({
+    mutationFn: () => setupService.reset(),
+    onSuccess: async () => {
+      toast.success('System reset complete. Create the first admin again to start fresh.');
+      logout();
+      queryClient.clear();
+      setConfirmReset(false);
+      setTimeout(() => window.location.reload(), 250);
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.message || 'Failed to reset application data');
+    },
+  });
 
   const savePrinterSettings = async () => {
     const api = window.electronAPI || window.electron;
@@ -263,75 +193,13 @@ export default function SettingsPage() {
     <div className="p-6 space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-slate-800">Settings</h1>
-        <p className="text-sm text-slate-500 mt-0.5">Configure business details, LAN connection, receipts, and delivery options.</p>
+        <p className="text-sm text-slate-500 mt-0.5">Configure business details, receipts, printer behavior, and reset tools.</p>
       </div>
 
       <section className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <Header icon={Save} title="Business / POS Name" />
         <div className="p-6 grid md:grid-cols-2 gap-5">
           {BUSINESS_FIELDS.map(renderField)}
-        </div>
-      </section>
-
-      <section className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <Header icon={Server} title="Server Connection" />
-        <div className="p-6 space-y-5">
-          <div className="grid md:grid-cols-3 gap-4">
-            <Info label="Current Mode" value={appMode ? (appMode === 'server' ? 'Server / Main Computer' : 'Client / Cashier Computer') : 'Browser / Dev'} />
-            <Info label="Default Hostname" value={serverInfo?.defaultHostname || 'SHOP-SERVER'} />
-            <Info label="Backend Port" value={String(serverInfo?.port || 3000)} />
-          </div>
-
-          {appMode === 'server' && (
-            <div className="rounded-xl bg-blue-50 border border-blue-100 p-4">
-              <p className="text-sm font-semibold text-blue-900 mb-2">Give this URL to cashier computers:</p>
-              <div className="space-y-2">
-                <code className="block bg-white rounded-lg px-3 py-2 text-sm text-slate-700">{serverInfo?.shopServerUrl || 'http://SHOP-SERVER:3000/api/v1'}</code>
-                {(serverInfo?.lanUrls || []).map((url: string) => (
-                  <code key={url} className="block bg-white rounded-lg px-3 py-2 text-sm text-slate-700">{url}</code>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-1">Current API URL</label>
-            <input
-              className="w-full px-4 py-3 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50 focus:bg-white transition"
-              value={apiUrl}
-              disabled={appMode === 'server'}
-              onChange={(e) => setApiUrl(e.target.value)}
-            />
-            {appMode === 'server' && <p className="text-xs text-slate-500 mt-1">Server mode uses the local backend and database on this computer.</p>}
-            {appMode === 'client' && <p className="text-xs text-slate-500 mt-1">Client mode should point to the main computer, for example http://192.168.1.10:3000/api/v1.</p>}
-          </div>
-
-          {connectionStatus && (
-            <p className={`text-sm font-medium ${connectionStatus.includes('successful') ? 'text-emerald-600' : 'text-red-600'}`}>{connectionStatus}</p>
-          )}
-
-          <div className="flex flex-wrap gap-3">
-            <button onClick={testConnection} disabled={testingConnection} className="px-5 py-2.5 rounded-xl border border-blue-600 text-blue-600 text-sm font-semibold hover:bg-blue-50 disabled:opacity-60">
-              {testingConnection ? 'Testing...' : 'Test Connection'}
-            </button>
-            {appMode === 'client' && (
-              <button onClick={saveApiUrl} className="px-5 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700">
-                Save API URL
-              </button>
-            )}
-          </div>
-        </div>
-      </section>
-
-      <section className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <Header icon={Monitor} title="App Mode" />
-        <div className="p-6 flex flex-wrap gap-3">
-          <button onClick={() => changeMode('server')} disabled={savingMode !== null} className={`px-5 py-2.5 rounded-xl text-sm font-semibold border disabled:opacity-60 ${appMode === 'server' ? 'bg-blue-600 text-white border-blue-600' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}>
-            {savingMode === 'server' ? 'Saving Server Mode...' : 'Server / Main Computer'}
-          </button>
-          <button onClick={() => changeMode('client')} disabled={savingMode !== null} className={`px-5 py-2.5 rounded-xl text-sm font-semibold border disabled:opacity-60 ${appMode === 'client' ? 'bg-blue-600 text-white border-blue-600' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}>
-            {savingMode === 'client' ? 'Saving Client Mode...' : 'Client / Cashier Computer'}
-          </button>
         </div>
       </section>
 
@@ -422,14 +290,26 @@ export default function SettingsPage() {
 
       <section className="bg-white rounded-2xl border border-red-200 shadow-sm overflow-hidden">
         <Header icon={AlertTriangle} title="Danger Zone" danger />
-        <div className="p-6 flex items-center justify-between">
-          <div>
-            <p className="text-sm font-semibold text-slate-700">Clear All Sales Data</p>
-            <p className="text-xs text-slate-500 mt-0.5">Permanently deletes all sales and invoice records. Cannot be undone.</p>
+        <div className="p-6 space-y-4">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold text-slate-700">Clear All Sales Data</p>
+              <p className="text-xs text-slate-500 mt-0.5">Permanently deletes all sales and invoice records. Cannot be undone.</p>
+            </div>
+            <button onClick={() => setConfirmClear(true)} className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-red-600 bg-red-50 border border-red-200 rounded-xl hover:bg-red-100 transition-colors">
+              <Trash2 className="w-4 h-4" />Clear Sales
+            </button>
           </div>
-          <button onClick={() => setConfirmClear(true)} className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-red-600 bg-red-50 border border-red-200 rounded-xl hover:bg-red-100 transition-colors">
-            <Trash2 className="w-4 h-4" />Clear Sales
-          </button>
+
+          <div className="flex items-center justify-between gap-4 border-t border-red-100 pt-4">
+            <div>
+              <p className="text-sm font-semibold text-slate-700">Reset Entire System for Fresh Testing</p>
+              <p className="text-xs text-slate-500 mt-0.5">Deletes admins, products, customers, sales, suppliers, settings, and all other records so first-admin setup appears again.</p>
+            </div>
+            <button onClick={() => setConfirmReset(true)} className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-red-600 border border-red-600 rounded-xl hover:bg-red-700 transition-colors">
+              <MonitorSmartphone className="w-4 h-4" />Full Reset
+            </button>
+          </div>
         </div>
       </section>
 
@@ -449,6 +329,28 @@ export default function SettingsPage() {
               </button>
               <button onClick={() => clearMut.mutate()} disabled={clearMut.isPending} className="flex-1 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700 disabled:opacity-50">
                 {clearMut.isPending ? 'Clearing...' : 'Yes, Delete All'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmReset && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                <AlertTriangle className="w-5 h-5 text-red-600" />
+              </div>
+              <h3 className="text-base font-bold text-slate-800">Reset Entire System?</h3>
+            </div>
+            <p className="text-sm text-slate-600 mb-5">This removes every database record and signs this computer out so you can test from scratch with first-admin setup again.</p>
+            <div className="flex gap-3">
+              <button onClick={() => setConfirmReset(false)} className="flex-1 py-2 rounded-lg border border-slate-300 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                Cancel
+              </button>
+              <button onClick={() => resetMut.mutate()} disabled={resetMut.isPending} className="flex-1 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700 disabled:opacity-50">
+                {resetMut.isPending ? 'Resetting...' : 'Delete Everything'}
               </button>
             </div>
           </div>
@@ -494,15 +396,6 @@ function Header({ icon: Icon, title, danger = false }: { icon: any; title: strin
         <Icon className={`w-4 h-4 ${danger ? 'text-red-600' : 'text-blue-600'}`} />
       </div>
       <h2 className={`text-sm font-bold ${danger ? 'text-red-600' : 'text-slate-700'}`}>{title}</h2>
-    </div>
-  );
-}
-
-function Info({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl bg-slate-50 border border-slate-200 p-4">
-      <p className="text-xs text-slate-500 uppercase tracking-wide">{label}</p>
-      <p className="text-sm font-semibold text-slate-800 mt-1 break-all">{value}</p>
     </div>
   );
 }

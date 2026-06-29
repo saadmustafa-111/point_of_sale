@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export type Role = 'ADMIN' | 'CASHIER';
+export type Role = 'ADMIN';
 
 export interface AuthUser {
   id: string;
@@ -15,7 +15,6 @@ interface AuthState {
   token: string | null;
   setAuth: (user: AuthUser, token: string) => void;
   logout: () => void;
-  isAdmin: () => boolean;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -25,7 +24,6 @@ export const useAuthStore = create<AuthState>()(
       token: null,
       setAuth: (user, token) => set({ user, token }),
       logout: () => set({ user: null, token: null }),
-      isAdmin: () => get().user?.role === 'ADMIN',
     }),
     { name: 'pos-auth' }
   )

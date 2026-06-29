@@ -1,38 +1,43 @@
-import { useEffect, useState } from 'react';
+import { Suspense, lazy, useEffect, useState } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './store/authStore';
 import { setApiBaseUrl } from './services/api';
 import { setupService } from './services';
-import LoginPage from './pages/LoginPage';
-import SetupWizard from './pages/SetupWizard';
-import FirstAdminSetup from './pages/FirstAdminSetup';
-import DashboardLayout from './layouts/DashboardLayout';
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const SetupWizard = lazy(() => import('./pages/SetupWizard'));
+const FirstAdminSetup = lazy(() => import('./pages/FirstAdminSetup'));
+const DashboardLayout = lazy(() => import('./layouts/DashboardLayout'));
+const DashboardPage = lazy(() => import('./pages/admin/DashboardPage'));
+const ProductsPage = lazy(() => import('./pages/admin/ProductsPage'));
+const CategoriesPage = lazy(() => import('./pages/admin/CategoriesPage'));
+const BrandsPage = lazy(() => import('./pages/admin/BrandsPage'));
+const InventoryPage = lazy(() => import('./pages/admin/InventoryPage'));
+const UsersPage = lazy(() => import('./pages/admin/UsersPage'));
+const SalesAdminPage = lazy(() => import('./pages/admin/SalesAdminPage'));
+const ReportsPage = lazy(() => import('./pages/admin/ReportsPage'));
+const SettingsPage = lazy(() => import('./pages/admin/SettingsPage'));
+const InstallmentsPage = lazy(() => import('./pages/admin/InstallmentsPage'));
+const ReturnsPage = lazy(() => import('./pages/admin/ReturnsPage'));
+const SuppliersPage = lazy(() => import('./pages/admin/SuppliersPage'));
+const PurchasesPage = lazy(() => import('./pages/admin/PurchasesPage'));
+const ExpensesPage = lazy(() => import('./pages/admin/ExpensesPage'));
+const POSPage = lazy(() => import('./pages/cashier/POSPage'));
+const MySalesPage = lazy(() => import('./pages/cashier/MySalesPage'));
+const CustomersPage = lazy(() => import('./pages/cashier/CustomersPage'));
 
-// Admin pages
-import DashboardPage      from './pages/admin/DashboardPage';
-import ProductsPage       from './pages/admin/ProductsPage';
-import CategoriesPage     from './pages/admin/CategoriesPage';
-import BrandsPage         from './pages/admin/BrandsPage';
-import InventoryPage      from './pages/admin/InventoryPage';
-import UsersPage          from './pages/admin/UsersPage';
-import SalesAdminPage     from './pages/admin/SalesAdminPage';
-import ReportsPage        from './pages/admin/ReportsPage';
-import SettingsPage       from './pages/admin/SettingsPage';
-import InstallmentsPage   from './pages/admin/InstallmentsPage';
-import ReturnsPage        from './pages/admin/ReturnsPage';
-import SuppliersPage      from './pages/admin/SuppliersPage';
-import PurchasesPage      from './pages/admin/PurchasesPage';
-import ExpensesPage       from './pages/admin/ExpensesPage';
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// Cashier pages
-import POSPage            from './pages/cashier/POSPage';
-import MySalesPage        from './pages/cashier/MySalesPage';
-import CustomersPage      from './pages/cashier/CustomersPage';
+function AppLoader() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-slate-100">
+      <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+}
 
-function PrivateRoute({ children, adminOnly = false }: { children: React.ReactNode; adminOnly?: boolean }) {
+function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { user } = useAuthStore();
   if (!user) return <Navigate to="/login" replace />;
-  if (adminOnly && user.role !== 'ADMIN') return <Navigate to="/pos" replace />;
   return <>{children}</>;
 }
 
@@ -44,39 +49,26 @@ export default function App() {
     let mounted = true;
 
     async function boot() {
-      const checkFirstAdmin = async (mode: 'server' | 'client' | null) => {
-        if (mode !== 'server' && window.electron) return false;
-        const status = await setupService.status();
-        return Boolean(status?.needsFirstAdmin);
-      };
-
-      if (!window.electron) {
-        setApiBaseUrl('/api/v1');
-        try {
-          const needsFirstAdmin = await checkFirstAdmin(null);
-          if (mounted) setBootState(needsFirstAdmin ? 'first-admin' : 'ready');
-        } catch (_) {
-          if (mounted) setBootState('ready');
-        }
-        return;
-      }
-
       try {
-        const [mode, apiUrl] = await Promise.all([
-          window.electron.getAppMode(),
-          window.electron.getApiUrl(),
-        ]);
+        const apiUrl = window.electron?.getApiUrl ? await window.electron.getApiUrl() : '/api/v1';
+        setApiBaseUrl(apiUrl || '/api/v1');
+        const maxAttempts = window.electron?.platform === 'win32' ? 40 : 20;
+        let status: any = null;
 
-        if (!mode || !apiUrl) {
-          if (mounted) setBootState('setup');
-          return;
+        for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+          try {
+            status = await setupService.status();
+            break;
+          } catch (err) {
+            if (attempt === maxAttempts - 1) throw err;
+            await wait(1500);
+          }
         }
 
-        setApiBaseUrl(apiUrl);
-        const needsFirstAdmin = await checkFirstAdmin(mode);
+        const needsFirstAdmin = Boolean(status?.needsFirstAdmin);
         if (mounted) setBootState(needsFirstAdmin ? 'first-admin' : 'ready');
       } catch (_) {
-        if (mounted) setBootState('setup');
+        if (mounted) setBootState('ready');
       }
     }
 
@@ -85,50 +77,46 @@ export default function App() {
   }, []);
 
   if (bootState === 'loading') {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-100">
-        <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
-  if (bootState === 'setup') {
-    return <SetupWizard onComplete={() => window.location.reload()} />;
+    return <AppLoader />;
   }
 
   if (bootState === 'first-admin') {
-    return <FirstAdminSetup onComplete={() => setBootState('ready')} />;
+    return (
+      <Suspense fallback={<AppLoader />}>
+        <FirstAdminSetup onComplete={() => setBootState('ready')} />
+      </Suspense>
+    );
   }
 
   return (
-    <Routes>
-      <Route path="/login" element={user ? <Navigate to={user.role === 'ADMIN' ? '/dashboard' : '/pos'} replace /> : <LoginPage />} />
+    <Suspense fallback={<AppLoader />}>
+      <Routes>
+        <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
+        <Route path="/setup" element={<SetupWizard onComplete={() => setBootState('first-admin')} />} />
 
-      <Route path="/" element={<PrivateRoute><DashboardLayout /></PrivateRoute>}>
-        {/* Admin routes */}
-        <Route index element={<Navigate to={user?.role === 'ADMIN' ? '/dashboard' : '/pos'} replace />} />
-        <Route path="dashboard" element={<PrivateRoute adminOnly><DashboardPage /></PrivateRoute>} />
-        <Route path="products"  element={<PrivateRoute adminOnly><ProductsPage /></PrivateRoute>} />
-        <Route path="categories" element={<PrivateRoute adminOnly><CategoriesPage /></PrivateRoute>} />
-        <Route path="brands"    element={<PrivateRoute adminOnly><BrandsPage /></PrivateRoute>} />
-        <Route path="inventory" element={<PrivateRoute adminOnly><InventoryPage /></PrivateRoute>} />
-        <Route path="users"     element={<PrivateRoute adminOnly><UsersPage /></PrivateRoute>} />
-        <Route path="sales"     element={<PrivateRoute adminOnly><SalesAdminPage /></PrivateRoute>} />
-        <Route path="installments" element={<PrivateRoute adminOnly><InstallmentsPage /></PrivateRoute>} />
-        <Route path="returns"   element={<PrivateRoute adminOnly><ReturnsPage /></PrivateRoute>} />
-        <Route path="suppliers" element={<PrivateRoute adminOnly><SuppliersPage /></PrivateRoute>} />
-        <Route path="purchases" element={<PrivateRoute adminOnly><PurchasesPage /></PrivateRoute>} />
-        <Route path="expenses"  element={<PrivateRoute adminOnly><ExpensesPage /></PrivateRoute>} />
-        <Route path="reports"   element={<PrivateRoute adminOnly><ReportsPage /></PrivateRoute>} />
-        <Route path="settings"  element={<PrivateRoute adminOnly><SettingsPage /></PrivateRoute>} />
+        <Route path="/" element={<PrivateRoute><DashboardLayout /></PrivateRoute>}>
+          <Route index element={<Navigate to="/dashboard" replace />} />
+          <Route path="dashboard" element={<DashboardPage />} />
+          <Route path="pos" element={<POSPage />} />
+          <Route path="my-sales" element={<MySalesPage />} />
+          <Route path="customers" element={<CustomersPage />} />
+          <Route path="products" element={<ProductsPage />} />
+          <Route path="categories" element={<CategoriesPage />} />
+          <Route path="brands" element={<BrandsPage />} />
+          <Route path="inventory" element={<InventoryPage />} />
+          <Route path="users" element={<UsersPage />} />
+          <Route path="sales" element={<SalesAdminPage />} />
+          <Route path="installments" element={<InstallmentsPage />} />
+          <Route path="returns" element={<ReturnsPage />} />
+          <Route path="suppliers" element={<SuppliersPage />} />
+          <Route path="purchases" element={<PurchasesPage />} />
+          <Route path="expenses" element={<ExpensesPage />} />
+          <Route path="reports" element={<ReportsPage />} />
+          <Route path="settings" element={<SettingsPage />} />
+        </Route>
 
-        {/* Cashier routes */}
-        <Route path="pos"       element={<PrivateRoute><POSPage /></PrivateRoute>} />
-        <Route path="my-sales"  element={<PrivateRoute><MySalesPage /></PrivateRoute>} />
-        <Route path="customers" element={<PrivateRoute><CustomersPage /></PrivateRoute>} />
-      </Route>
-
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Suspense>
   );
 }

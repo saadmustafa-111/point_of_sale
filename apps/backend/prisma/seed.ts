@@ -21,19 +21,6 @@ async function main() {
     },
   });
 
-  // Demo cashier
-  const cashierPass = await bcrypt.hash('123456', 10);
-  await prisma.user.upsert({
-    where: { username: 'cashier1' },
-    update: { fullName: 'Ali Cashier', password: cashierPass },
-    create: {
-      username: 'cashier1',
-      password: cashierPass,
-      fullName: 'Ali Cashier',
-      role: Role.CASHIER,
-    },
-  });
-
   // Categories
   const cats = ['Air Conditioners', 'Refrigerators', 'Washing Machines', 'TVs', 'Small Appliances'];
   for (const name of cats) {
@@ -63,7 +50,6 @@ async function main() {
 
   console.log('✅ Seeding complete');
   console.log('   Admin  → username: admin    password: 123456');
-  console.log('   Cashier→ username: cashier1 password: 123456');
 }
 
 main()

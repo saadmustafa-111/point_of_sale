@@ -38,7 +38,7 @@
     "asarUnpack": [
       "**/*.node"
     ],
-    "compression": "store",
+    "compression": "maximum",
     "npmRebuild": false,
     "directories": {
       "output": "dist-electron"

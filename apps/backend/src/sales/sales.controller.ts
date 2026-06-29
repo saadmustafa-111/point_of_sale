@@ -9,17 +9,18 @@ import { Role } from '../common/enums';
 
 @ApiTags('Sales')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(Role.ADMIN)
 @Controller('sales')
 export class SalesController {
   constructor(private service: SalesService) {}
 
   @Get()
-  all(@Request() req) { return this.service.findAll(req.user.id, req.user.role); }
+  all() { return this.service.findAll(); }
 
   @Get(':id')
-  one(@Param('id') id: string, @Request() req) {
-    return this.service.findOne(id, req.user.id, req.user.role);
+  one(@Param('id') id: string) {
+    return this.service.findOne(id);
   }
 
   @Post()
@@ -28,7 +29,5 @@ export class SalesController {
   }
 
   @Delete()
-  @UseGuards(RolesGuard)
-  @Roles(Role.ADMIN)
   deleteAll() { return this.service.deleteAll(); }
 }
