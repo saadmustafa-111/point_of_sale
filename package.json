@@ -38,13 +38,13 @@
     "asarUnpack": [
       "**/*.node"
     ],
-    "compression": "maximum",
+    "compression": "normal",
     "npmRebuild": false,
     "directories": {
       "output": "dist-electron"
     },
     "artifactName": "POS-System-${version}-${os}-${arch}.${ext}",
-    "afterPack": "scripts/after-pack-mac.cjs",
+    "afterPack": "./scripts/after-pack-mac.cjs",
     "files": [
       "electron/main.js",
       "electron/preload.js",
