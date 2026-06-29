@@ -55,13 +55,13 @@ jobs:
         shell: pwsh
         run: |
           Write-Host "START BUILD $(Get-Date -Format o)"
-          Write-Host "COMMAND: npm run build:win"
+          Write-Host "COMMAND: npm run build:electron:win"
           $env:DEBUG = "electron-builder,electron-builder:*"
-          & npm run build:win
+          & npm run build:electron:win
           $exitCode = $LASTEXITCODE
           Write-Host "END BUILD $(Get-Date -Format o) exit code: $exitCode"
           if ($exitCode -ne 0) {
-            throw "Windows ZIP build failed. Command: npm run build:win. Exit code: $exitCode"
+            throw "Windows ZIP build failed. Command: npm run build:electron:win. Exit code: $exitCode"
           }
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
